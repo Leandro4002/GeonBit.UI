@@ -17,6 +17,24 @@ namespace GeonBit.UI
     /// </summary>
     public class DrawUtils
     {
+        static Texture2D _blankTexture;
+
+        /// <summary>
+        /// Singleton to get a blank white texture of 1x1.
+        /// Used to draw rectangles.
+        /// </summary>
+        /// <param name="graphicsDevice">The graphicDevice instance used to create the texture.</param>
+        /// <returns>Instance of a blank texture.</returns>
+        public static Texture2D GetBlankWhiteTexture(GraphicsDevice graphicsDevice) {
+            if (_blankTexture == null) {
+                _blankTexture = new Texture2D(graphicsDevice, 1, 1);
+                Color[] data = new Color[1] { Color.White };
+                _blankTexture.SetData(data);
+            }
+
+            return _blankTexture;
+        }
+
         // Stack of rendering targets
         private Stack<RenderTarget2D> _renderTargets = new Stack<RenderTarget2D>();
 

@@ -1,4 +1,4 @@
-﻿#region File Description
+#region File Description
 //-----------------------------------------------------------------------------
 // TextInput are entities that allow the user to type in free text using the keyboard.
 //
@@ -34,6 +34,9 @@ namespace GeonBit.UI.Entities
         // current caret position (-1 is last character).
         int _caret = -1;
 
+        // width of the carret (in pixels)
+        const int CARET_WIDTH = 2;
+
         /// <summary>The Paragraph object showing current text value.</summary>
         public Paragraph TextParagraph;
 
@@ -62,6 +65,27 @@ namespace GeonBit.UI.Entities
 
         // current caret animation step
         float _caretAnim = 0f;
+
+        /// <summary>
+        /// Get the actual visibility of the caret.
+        /// </summary>
+        /// <returns>True or false if the carret is visible.</returns>
+        public bool IsCaretCurrentlyVisible {
+            get
+            {
+                if (!IsFocused) {
+                    return false;
+                } else {
+                    return _caretAnim < 0 || (int)_caretAnim % 2 == 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// When the position of the carret change, this is the number of seconds to wait before starting to blink again.
+        /// It allows the user to see more easily where the caret is.
+        /// </summary>
+        public static float caretBlinkAfterMoveDelay = 2f;
 
         /// <summary>Text to show when there's no input. Note that this text will be drawn with PlaceholderParagraph, and not TextParagraph.</summary>
         string _placeholderText = string.Empty;
@@ -333,19 +357,15 @@ namespace GeonBit.UI.Entities
         /// <returns>Processed text that will actually be displayed on screen.</returns>
         protected string PrepareInputTextForDisplay(bool usePlaceholder, bool showCaret)
         {
-            // set caret char
-            string caretShow = showCaret ? ((int)_caretAnim % 2 == 0) ? "|" : " " : string.Empty;
-
             // set main text when hidden with password char
             if (HideInputWithChar != null)
             {
-                var hiddenVal = new string(HideInputWithChar.Value, _value.Length);
-                TextParagraph.Text = hiddenVal.Insert(_caret >= 0 ? _caret : hiddenVal.Length, caretShow);
+                TextParagraph.Text = new string(HideInputWithChar.Value, _value.Length);
             }
             // set main text for regular text input
             else
             {
-                TextParagraph.Text = _value.Insert(_caret >= 0 ? _caret : _value.Length, caretShow);
+                TextParagraph.Text = _value;
             }
 
             // update placeholder text
@@ -371,12 +391,16 @@ namespace GeonBit.UI.Entities
             // check if hit paragraph
             if (_value.Length > 0)
             {
+                Vector2 charSize = TextParagraph.GetCharacterActualSize();
+
                 // get relative position
                 Vector2 actualParagraphPos = new Vector2(_destRectInternal.Location.X, _destRectInternal.Location.Y);
                 Vector2 relativeOffset = GetMousePos(-actualParagraphPos);
 
+                // offset for half of a character because the caret is between characters
+                relativeOffset.X += charSize.X / 2;
+
                 // calc caret position
-                Vector2 charSize = TextParagraph.GetCharacterActualSize();
                 int x = (int)(relativeOffset.X / charSize.X);
                 _caret = x;
 
@@ -410,6 +434,8 @@ namespace GeonBit.UI.Entities
             {
                 _caret = -1;
             }
+
+            PauseCaretBlink();
         }
 
         /// <summary>
@@ -473,6 +499,18 @@ namespace GeonBit.UI.Entities
             // set placeholder and main text visibility based on current value
             TextParagraph.Visible = !showPlaceholder;
             PlaceholderParagraph.Visible = showPlaceholder;
+            
+            if (!IsCaretCurrentlyVisible) return;
+
+            Vector2 charSize = TextParagraph.GetCharacterActualSize();
+            int caretHeight = (int)charSize.Y;
+
+            Texture2D blankTexture = DrawUtils.GetBlankWhiteTexture(spriteBatch.GraphicsDevice);
+            Rectangle caretDstRect = new Rectangle(0, 0, CARET_WIDTH, caretHeight);
+            caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * (_caret == -1 ? _value.Length : _caret) - CARET_WIDTH / 2);
+            caretDstRect.Y = TextParagraph._actualDestRect.Y;
+
+            spriteBatch.Draw(blankTexture, caretDstRect, new Rectangle(0, 0, 1, 1), TextParagraph.FillColor);
         }
 
         /// <summary>
@@ -545,6 +583,15 @@ namespace GeonBit.UI.Entities
         }
 
         /// <summary>
+        /// Reset the caret animation by setting _caretAnim = 1.
+        /// See the condition to draw carret in DrawEntity
+        /// </summary>
+        private void PauseCaretBlink()
+        {
+            _caretAnim = -caretBlinkAfterMoveDelay;
+        }
+
+        /// <summary>
         /// Called every frame before update.
         /// TextInput implement this function to get keyboard input and also to animate caret timer.
         /// </summary>
@@ -565,6 +612,9 @@ namespace GeonBit.UI.Entities
                 // store old string and update based on user input
                 string oldVal = _value;
                 _value = KeyboardInput.GetTextInput(_value, TextParagraph.MaxCharactersInLine, ref pos);
+
+                // if the caret moved, make it stay a little longer on screen before blinking again
+                if (_caret != pos) PauseCaretBlink();
 
                 // update caret position
                 _caret = pos;

@@ -1,4 +1,4 @@
-﻿#region File Description
+#region File Description
 //-----------------------------------------------------------------------------
 // Paragraph is a simple text to display.
 // It support multilines, outline color, different colors for when mouse hover
@@ -455,7 +455,10 @@ namespace GeonBit.UI.Entities
             // so we just update _size every frame and the text alignemtn (left, right, center..) fix itself by the destination rect.
             _fontOrigin = Vector2.Zero;
             _position = new Vector2(_destRect.X, _destRect.Y);
-            Vector2 size = _currFont.MeasureString(_processedText);
+
+            // get size of the text. If there is no text, process an empty char so when other entity
+            // uses this entity destRect, they have a correct y origin.
+            Vector2 size = _currFont.MeasureString((_processedText.Length == 0 ? " " : _processedText));
 
             // set position and origin based on anchor.
             // note: no top-left here because thats the default set above.
