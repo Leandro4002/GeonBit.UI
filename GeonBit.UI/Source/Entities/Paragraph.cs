@@ -72,6 +72,11 @@ namespace GeonBit.UI.Entities
         [System.Xml.Serialization.XmlIgnore]
         public SpriteFont FontOverride = null;
 
+        /// <summary>
+        /// If true, replace space by another character.
+        /// </summary>
+        public bool ShowSpaceAsDifferentCharacter = false;
+
         // the size of a single space character with current font.
         private Vector2 SingleCharacterSize;
 
@@ -441,6 +446,12 @@ namespace GeonBit.UI.Entities
             if (WrapWords)
             {
                 newProcessedText = WrapText(_currFont, newProcessedText, _destRect.Width, _actualScale);
+            }
+
+            if (ShowSpaceAsDifferentCharacter)
+            {
+                // use another character to represent spaces.
+                newProcessedText = newProcessedText.Replace(' ', '\u00ac');
             }
 
             // if processed text changed
