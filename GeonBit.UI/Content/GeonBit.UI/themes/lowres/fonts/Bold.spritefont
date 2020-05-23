@@ -41,7 +41,7 @@ with.
     If you uncomment this line, the default character will be substituted if you draw
     or measure text that contains characters which were not included in the font.
     -->
-    <!-- <DefaultCharacter>*</DefaultCharacter> -->
+    <DefaultCharacter>*</DefaultCharacter>
 
     <!--
     CharacterRegions control what letters are available in the font. Every
@@ -51,9 +51,21 @@ with.
     See the documentation for more information.
     -->
     <CharacterRegions>
+	  <!-- basic latin (basic ascii) -->
       <CharacterRegion>
-        <Start>&#32;</Start>
-        <End>&#126;</End>
+        <Start>&#x20;</Start>
+        <End>&#x7E;</End>
+      </CharacterRegion>
+	  <!-- latin-1 supplement (accents) -->
+	  <CharacterRegion>
+        <Start>&#xA0;</Start>
+        <End>&#xFF;</End>
+      </CharacterRegion>
+	  <!-- latin extended-a (accents)
+	  This font doesn't contain all characters, some will be replaced by the defined default character -->
+	  <CharacterRegion>
+        <Start>&#x100;</Start>
+        <End>&#x17F;</End>
       </CharacterRegion>
     </CharacterRegions>
   </Asset>
