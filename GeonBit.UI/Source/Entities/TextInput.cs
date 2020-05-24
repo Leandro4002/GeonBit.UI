@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.Generic;
 using GeonBit.UI.Entities.TextValidators;
+using System;
 
 namespace GeonBit.UI.Entities
 {
@@ -509,6 +510,42 @@ namespace GeonBit.UI.Entities
             Rectangle caretDstRect = new Rectangle(0, 0, CARET_WIDTH, caretHeight);
             caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * (_caret == -1 ? _value.Length : _caret) - CARET_WIDTH / 2);
             caretDstRect.Y = TextParagraph._actualDestRect.Y;
+
+            if (_multiLine)
+            {
+                Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
+                int oldNumOfCharacter = 0, numOfCharacter = 0;
+                int currentLine = 0;
+                int karet = (_caret == -1 ? _value.Length : _caret);
+
+                // we iterate trought each line to find the caret position
+                foreach(string line in _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
+                {
+                    oldNumOfCharacter = numOfCharacter;
+
+                    int currentLineLenght = line.Length;
+                    switch (processedTextLinesCodes[currentLine])
+                    {
+                        case Paragraph.LineType.Normal    : break; // nothing happens in this line
+                        case Paragraph.LineType.WordWrap  : currentLineLenght--; break; // word wraped to next line
+                        case Paragraph.LineType.WordBroken: currentLineLenght-=3; break; // word broken into pieces
+                    }
+
+                    numOfCharacter += currentLineLenght;
+
+                    // when we found in which line the caret is located, we break the loop
+                    if (karet - currentLine - numOfCharacter <= 0)
+                    {
+                        break;
+                    }
+                    currentLine++;
+                }
+
+                // recalculate caret position
+                int localCaret = karet - oldNumOfCharacter - currentLine;
+                caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * localCaret - CARET_WIDTH / 2);
+                caretDstRect.Y += (int)(currentLine * charSize.Y);
+            }
 
             spriteBatch.Draw(blankTexture, caretDstRect, new Rectangle(0, 0, 1, 1), TextParagraph.FillColor);
         }

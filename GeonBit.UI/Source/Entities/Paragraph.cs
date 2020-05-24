@@ -17,6 +17,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using GeonBit.UI.DataTypes;
 using System.Text;
+using System;
 
 namespace GeonBit.UI.Entities
 {
@@ -163,6 +164,36 @@ namespace GeonBit.UI.Entities
             set { _addHyphenWhenBreakWord = value; MarkAsDirty(); }
         }
 
+        /// <summary>
+        /// Font styles (should match the font styles defined in GeonBit.UI engine).
+        /// </summary>
+        public enum LineType
+        {
+            /// <summary>Normal carriage return or end of text.</summary>
+            Normal,
+            /// <summary>Line containing a word that has been wrapped (moved to the next line).</summary>
+            WordWrap,
+            /// <summary>Line containing a word that has been broken (half in current line, and other half in next line).</summary>
+            WordBroken
+        };
+
+        List<LineType> _processedTextLinesType;
+
+        /// <summary>
+        /// Contains the "processedText" types of lines (word wrap, word borken...) indexed by lines.
+        /// Those codes indicate where the word has been wrapped and broken.
+        /// </summary>
+        public LineType[] ProcessedTextLinesTypes
+        {
+            get { return _processedTextLinesType.ToArray(); }
+        }
+
+        /// <summary>For every broken word in _processedText, the line number is indicated in this list.</summary>
+        List<int> _lineNumberOfBrokenWords;
+
+        /// <summary>Number of lines in "_processedText", calculated during "WrapText" method. Used for some calculations in "WrapText" method.</summary>
+        int _processedTextNumberOfLines;
+
         /// <summary>Base font size. Change this property to affect the size of all paragraphs and other text entities.</summary>
         public static float BaseSize = 1f;
 
@@ -306,6 +337,9 @@ namespace GeonBit.UI.Entities
                     if (breakPos >= word.Length - 1) { breakPos -= 2; }
                     if (breakPos <= 0) { breakPos = 1; }
 
+                    // store the line number where the word has been broken.
+                    _lineNumberOfBrokenWords.Add(ret.Length == 0 ? _processedTextNumberOfLines : _processedTextNumberOfLines + 1);
+
                     // break the word into two and add to the list of words after this position.
                     // we will process them in next loop iterations.
                     string firstHalf = word.Substring(0, breakPos);
@@ -324,7 +358,11 @@ namespace GeonBit.UI.Entities
                 // did overflow max width? add line break and reset current width.
                 if (currWidth >= maxLineWidth)
                 {
-                    ret.Append('\n');
+                    // we push this line as a "word wrap"
+                    _processedTextLinesType.Add(LineType.WordWrap);
+                    _processedTextNumberOfLines++;
+
+                    ret.Append(Environment.NewLine);
                     ret.Append(word);
                     if (!lastWord) ret.Append(' ');
                     currWidth = wordWidth;
@@ -346,6 +384,10 @@ namespace GeonBit.UI.Entities
             {
                 ret = ret.Remove(ret.Length - 1, 1);
             }
+
+            // we push this line as a "normal return"
+            _processedTextLinesType.Add(LineType.Normal);
+            _processedTextNumberOfLines++;
 
             // return the final wrapped text
             return ret.ToString();
@@ -445,7 +487,23 @@ namespace GeonBit.UI.Entities
             string newProcessedText = Text;
             if (WrapWords)
             {
+                // initialization of some values used in the WrapText method for some caluclations
+                _processedTextLinesType = new List<LineType>();
+                _lineNumberOfBrokenWords = new List<int>();
+                _processedTextNumberOfLines = 0;
+
                 newProcessedText = WrapText(_currFont, newProcessedText, _destRect.Width, _actualScale);
+
+                // for each line containing a broken word, update the line type list
+                for (int i = 0; i < _lineNumberOfBrokenWords.Count; i++)
+                {
+                    _processedTextLinesType[_lineNumberOfBrokenWords[i]] = LineType.WordBroken;
+                }
+
+                // when processedText has multiple line, that last line has an extra carriage return (\r)
+                if (newProcessedText.Length > 0 && newProcessedText[newProcessedText.Length - 1] == '\r') {
+                    newProcessedText = newProcessedText.Remove(newProcessedText.Length - 1, 1);
+                }
             }
 
             if (ShowSpaceAsDifferentCharacter)
