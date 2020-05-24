@@ -517,9 +517,10 @@ namespace GeonBit.UI.Entities
                 int oldNumOfCharacter = 0, numOfCharacter = 0;
                 int currentLine = 0;
                 int karet = (_caret == -1 ? _value.Length : _caret);
+                bool loopBroken = false;
 
                 // we iterate trought each line to find the caret position
-                foreach(string line in _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
+                foreach (string line in _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
                 {
                     oldNumOfCharacter = numOfCharacter;
 
@@ -528,7 +529,7 @@ namespace GeonBit.UI.Entities
                     {
                         case Paragraph.LineType.Normal    : break; // nothing happens in this line
                         case Paragraph.LineType.WordWrap  : currentLineLenght--; break; // word wraped to next line
-                        case Paragraph.LineType.WordBroken: currentLineLenght-=3; break; // word broken into pieces
+                        case Paragraph.LineType.WordBroken: currentLineLenght -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
                     }
 
                     numOfCharacter += currentLineLenght;
@@ -536,13 +537,22 @@ namespace GeonBit.UI.Entities
                     // when we found in which line the caret is located, we break the loop
                     if (karet - currentLine - numOfCharacter <= 0)
                     {
+                        loopBroken = true;
                         break;
                     }
                     currentLine++;
                 }
 
-                // recalculate caret position
                 int localCaret = karet - oldNumOfCharacter - currentLine;
+
+                // if we didn't break the loop, it means that the caret is at the last character of text.
+                // when it happens, it is because the text finishes with a space, so there is no word wrap/break and the position is incorrect.
+                if (!loopBroken)
+                {
+                    localCaret = 0;
+                }
+
+                // recalculate caret position
                 caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * localCaret - CARET_WIDTH / 2);
                 caretDstRect.Y += (int)(currentLine * charSize.Y);
             }
