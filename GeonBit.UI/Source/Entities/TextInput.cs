@@ -439,6 +439,50 @@ namespace GeonBit.UI.Entities
             PauseCaretBlink();
         }
 
+        private Point CalculateCaretPositionForMultiline(string[] linesToScan, Paragraph.LineType[] linesType, int caret)
+        {
+            int oldNumOfCharacter = 0, numOfCharacter = 0;
+            int currentLine = 0;
+            bool loopBroken = false;
+
+            // we iterate trought each line to find the caret position
+            foreach (string line in linesToScan)
+            {
+                oldNumOfCharacter = numOfCharacter;
+
+                int currentLineLenght = line.Length;
+                switch (linesType[currentLine])
+                {
+                    case Paragraph.LineType.Normal: break; // nothing happens in this line
+                    case Paragraph.LineType.WordWrap: currentLineLenght--; break; // word wraped to next line
+                    case Paragraph.LineType.WordBroken: currentLineLenght -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                }
+
+                numOfCharacter += currentLineLenght;
+
+                // when we found in which line the caret is located, we break the loop
+                if (caret - currentLine - numOfCharacter <= 0)
+                {
+                    loopBroken = true;
+                    break;
+                }
+                currentLine++;
+            }
+
+            int localCaret = caret - oldNumOfCharacter - currentLine;
+
+            // if we didn't break the loop, it means that the caret is at the last character of text.
+            // when it happens, it is because the text finishes with a space, so there is no word wrap/break and the position is incorrect.
+            if (!loopBroken) localCaret = 0;
+
+            // recalculate caret position
+            Vector2 charSize = TextParagraph.GetCharacterActualSize();
+            Point carretPosition = new Point();
+            carretPosition.X = (int)(charSize.X * localCaret - CARET_WIDTH / 2);
+            carretPosition.Y = (int)(currentLine * charSize.Y);
+            return carretPosition;
+        }
+
         /// <summary>
         /// Draw the entity.
         /// </summary>
@@ -513,48 +557,12 @@ namespace GeonBit.UI.Entities
 
             if (_multiLine)
             {
+                string[] linesToScan = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
                 Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
-                int oldNumOfCharacter = 0, numOfCharacter = 0;
-                int currentLine = 0;
-                int karet = (_caret == -1 ? _value.Length : _caret);
-                bool loopBroken = false;
+                int actualCaret = (_caret == -1 ? _value.Length : _caret);
 
-                // we iterate trought each line to find the caret position
-                foreach (string line in _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
-                {
-                    oldNumOfCharacter = numOfCharacter;
-
-                    int currentLineLenght = line.Length;
-                    switch (processedTextLinesCodes[currentLine])
-                    {
-                        case Paragraph.LineType.Normal    : break; // nothing happens in this line
-                        case Paragraph.LineType.WordWrap  : currentLineLenght--; break; // word wraped to next line
-                        case Paragraph.LineType.WordBroken: currentLineLenght -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
-                    }
-
-                    numOfCharacter += currentLineLenght;
-
-                    // when we found in which line the caret is located, we break the loop
-                    if (karet - currentLine - numOfCharacter <= 0)
-                    {
-                        loopBroken = true;
-                        break;
-                    }
-                    currentLine++;
-                }
-
-                int localCaret = karet - oldNumOfCharacter - currentLine;
-
-                // if we didn't break the loop, it means that the caret is at the last character of text.
-                // when it happens, it is because the text finishes with a space, so there is no word wrap/break and the position is incorrect.
-                if (!loopBroken)
-                {
-                    localCaret = 0;
-                }
-
-                // recalculate caret position
-                caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * localCaret - CARET_WIDTH / 2);
-                caretDstRect.Y += (int)(currentLine * charSize.Y);
+                caretDstRect.Location = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, actualCaret);
+                caretDstRect.Location += TextParagraph._actualDestRect.Location;
             }
 
             spriteBatch.Draw(blankTexture, caretDstRect, new Rectangle(0, 0, 1, 1), TextParagraph.FillColor);
