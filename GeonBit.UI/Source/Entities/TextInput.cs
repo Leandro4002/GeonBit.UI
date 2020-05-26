@@ -309,11 +309,32 @@ namespace GeonBit.UI.Entities
             // if not try to find the right pos
             else
             {
+                // get how many lines can fit in the textbox
+                int linesFit = _destRectInternal.Height / (int)(System.Math.Max(TextParagraph.GetCharacterActualSize().Y, 1));
+
                 TextParagraph.Text = _value;
                 TextParagraph.CalcTextActualRectWithWrap();
-                string processedValueText = TextParagraph.GetProcessedText();
-                int currLine = processedValueText.Substring(0, _caret).Split('\n').Length;
-                _scrollbar.Value = currLine - 1;
+
+                // get caret position
+                string[] linesToScan = TextParagraph.GetProcessedText().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
+                Point caretPosition = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, _caret);
+
+                // find current line
+                Vector2 charSize = TextParagraph.GetCharacterActualSize();
+                int currentLine = (int)(caretPosition.Y / charSize.Y);
+
+                // reposition the scrollbar
+                // if the carret is before the textInput dest rect
+                if (currentLine - _scrollbar.Value < 0)
+                {
+                    _scrollbar.Value = currentLine;
+                }
+                // if the carret is after the textInput dest rect
+                else if (currentLine - _scrollbar.Value >= linesFit)
+                {
+                    _scrollbar.Value = currentLine - linesFit + 1;
+                }
             }
         }
 
