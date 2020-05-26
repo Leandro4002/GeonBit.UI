@@ -150,6 +150,10 @@ namespace GeonBit.UI.Entities
             // set limit by size - default true in single-line, default false in multi-line
             LimitBySize = !_multiLine;
 
+            // set default mosue event to change cursor when hovering text inputs (show IBeam)
+            OnMouseEnter = (Entity entity) => { UserInterface.Active.SetCursor(CursorType.IBeam); };
+            OnMouseLeave = (Entity entity) => { UserInterface.Active.SetCursor(CursorType.Default); };
+
             if (!UserInterface.Active._isDeserializing)
             {
 

@@ -284,6 +284,13 @@ namespace GeonBit.UI
             {
                 string cursorName = cursor.ToString().ToLowerInvariant();
                 CursorsData[(int)cursor] = content.Load<CursorTextureData>(_root + "textures/cursor_" + cursorName + "_md");
+
+                // special case for IBeam, we want it to be drawn in the middle. So when we select text it is easier
+                if (cursor == CursorType.IBeam)
+                {
+                    Point cursorActualSize = DrawUtils.GetActualTextureSize(Cursors[cursor]);
+                    CursorsData[(int)cursor].OffsetX -= cursorActualSize .X / 2;
+                }
             }
 
             // load panels

@@ -1,4 +1,4 @@
-﻿#region File Description
+#region File Description
 //-----------------------------------------------------------------------------
 // Contains graphic-related and drawing utilities.
 //
@@ -36,6 +36,40 @@ namespace GeonBit.UI
             }
 
             return _blankTexture;
+        }
+
+        /// <summary>
+        /// Trim the width and height of the texture to get the actual
+        /// size of the texture without the empty space around.
+        /// </summary>
+        /// <returns>The actual size of the texture.</returns>
+        public static Point GetActualTextureSize(Texture2D texture) {
+            Color[] data = new Color[texture.Width * texture.Height];
+            texture.GetData(data);
+
+            // init values used to get min / max
+            int minX, minY, maxX, maxY;
+            minX = minY = texture.Width;
+            maxX = maxY = -1;
+
+            // iterate trought each pixels that are not empty and calculate the min / max
+            for (int i = 0; i < data.Length - 1; i++) {
+                if (data[i] == Color.Transparent) continue;
+
+                int y = i / texture.Width;
+                int x = i;
+                while (x >= texture.Width) {
+                    x -= texture.Width;
+                }
+
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+            }
+
+            return new Point(maxX - minX + 1, maxY - minY + 1);
         }
 
         // Stack of rendering targets
