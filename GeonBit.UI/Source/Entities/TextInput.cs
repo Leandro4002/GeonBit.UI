@@ -500,72 +500,98 @@ namespace GeonBit.UI.Entities
             // get actual processed string
             _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder, IsFocused);
 
-            // for multiline only - handle scrollbar visibility and max
-            if (_multiLine && (_actualDisplayText != null) && (_destRectInternal.Height > 0))
+            // init some value for carret calculation
+            Vector2 charSize = TextParagraph.GetCharacterActualSize();
+            int caretHeight = (int)charSize.Y;
+            Rectangle caretDstRect = new Rectangle(0, 0, CARET_WIDTH, caretHeight);
+
+            if (_multiLine)
             {
-                // get how many lines can fit in the textbox and how many lines display text actually have
-                int linesFit = _destRectInternal.Height / (int)(System.Math.Max(currParagraph.GetCharacterActualSize().Y, 1));
-                int linesInText = _actualDisplayText.Split('\n').Length;
 
-                // if there are more lines than can fit, show scrollbar and manage scrolling:
-                if (linesInText > linesFit)
+                // if visible, calculate carret position for multiline TextInput
+                if (IsCaretCurrentlyVisible)
                 {
-                    // fix paragraph width to leave room for the scrollbar
-                    float prevWidth = currParagraph.Size.X;
-                    currParagraph.Size = new Vector2(_destRectInternal.Width / GlobalScale - 20, 0);
-                    if (currParagraph.Size.X != prevWidth)
-                    {
-                        // update size and re-calculate lines in text
-                        _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder, IsFocused);
-                        linesInText = _actualDisplayText.Split('\n').Length;
-                    }
+                    string[] linesToScan = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                    Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
+                    int actualCaret = (_caret == -1 ? _value.Length : _caret);
 
-                    // set scrollbar max and steps
-                    _scrollbar.Max = (uint)System.Math.Max(linesInText - linesFit, 2);
-                    _scrollbar.StepsCount = _scrollbar.Max;
-                    _scrollbar.Visible = true;
-
-                    // update text to fit scrollbar. first, rebuild the text with just the visible segment
-                    List<string> lines = new List<string>(_actualDisplayText.Split('\n'));
-                    int from = System.Math.Min(_scrollbar.Value, lines.Count - 1);
-                    int size = System.Math.Min(linesFit, lines.Count - from);
-                    lines = lines.GetRange(from, size);
-                    _actualDisplayText = string.Join("\n", lines);
-                    currParagraph.Text = _actualDisplayText;
+                    caretDstRect.Location = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, actualCaret);
+                    caretDstRect.Location += TextParagraph._actualDestRect.Location;
                 }
-                // if no need for scrollbar make it invisible
-                else
+
+                // at which line the text is starting to be shown
+                int scrollBarLineOffset = 0;
+
+                // handle scrollbar visibility and max
+                if (_actualDisplayText != null && _destRectInternal.Height > 0)
                 {
-                    currParagraph.Size = Vector2.Zero;
-                    _scrollbar.Visible = false;
+                    // get how many lines can fit in the textbox and how many lines display text actually have
+                    int linesFit = _destRectInternal.Height / (int)(System.Math.Max(currParagraph.GetCharacterActualSize().Y, 1));
+                    int linesInText = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).Length;
+                    
+                    // if there are more lines than can fit, show scrollbar and manage scrolling:
+                    if (linesInText > linesFit)
+                    {
+                        // fix paragraph width to leave room for the scrollbar
+                        float prevWidth = currParagraph.Size.X;
+                        currParagraph.Size = new Vector2(_destRectInternal.Width / GlobalScale - 20, 0);
+                        if (currParagraph.Size.X != prevWidth)
+                        {
+                            // update size and re-calculate lines in text
+                            _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder, IsFocused);
+                            linesInText = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).Length;
+                        }
+
+                        // set scrollbar max and steps
+                        _scrollbar.Max = (uint)System.Math.Max(linesInText - linesFit, 2);
+                        _scrollbar.StepsCount = _scrollbar.Max;
+                        _scrollbar.Visible = true;
+
+                        // update text to fit scrollbar. first, rebuild the text with just the visible segment
+                        List<string> lines = new List<string>(_actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None));
+                        int from = System.Math.Min(_scrollbar.Value, lines.Count - 1);
+                        int size = System.Math.Min(linesFit, lines.Count - from);
+                        lines = lines.GetRange(from, size);
+                        _actualDisplayText = string.Join("\n", lines);
+                        currParagraph.Text = _actualDisplayText;
+
+                        // get at which line the text is starting to be shown
+                        scrollBarLineOffset = from;
+                    }
+                    // if no need for scrollbar make it invisible
+                    else
+                    {
+                        currParagraph.Size = Vector2.Zero;
+                        _scrollbar.Visible = false;
+                    }
+                }
+
+                if (IsCaretCurrentlyVisible)
+                {
+                    // move the carret so it corresponds to the scroll position
+                    caretDstRect.Y -= (int)charSize.Y * scrollBarLineOffset;
+                }
+
+            } else {
+                // if visible, calculate carret position for single line TextInput
+                if (IsCaretCurrentlyVisible)
+                {
+                    caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * (_caret == -1 ? _value.Length : _caret) - CARET_WIDTH / 2);
+                    caretDstRect.Y = TextParagraph._actualDestRect.Y;
                 }
             }
 
             // set placeholder and main text visibility based on current value
             TextParagraph.Visible = !showPlaceholder;
             PlaceholderParagraph.Visible = showPlaceholder;
-            
-            if (!IsCaretCurrentlyVisible) return;
 
-            Vector2 charSize = TextParagraph.GetCharacterActualSize();
-            int caretHeight = (int)charSize.Y;
-
-            Texture2D blankTexture = DrawUtils.GetBlankWhiteTexture(spriteBatch.GraphicsDevice);
-            Rectangle caretDstRect = new Rectangle(0, 0, CARET_WIDTH, caretHeight);
-            caretDstRect.X = (int)(TextParagraph._actualDestRect.X + charSize.X * (_caret == -1 ? _value.Length : _caret) - CARET_WIDTH / 2);
-            caretDstRect.Y = TextParagraph._actualDestRect.Y;
-
-            if (_multiLine)
+            // if visible and in the visible area, draw carret at calculated position
+            bool carretIsInVisibleArea = caretDstRect.Y >= _destRectInternal.Y && caretDstRect.Y < _destRectInternal.Y + _destRectInternal.Height;
+            if (IsCaretCurrentlyVisible && ((_multiLine && carretIsInVisibleArea) || !_multiLine))
             {
-                string[] linesToScan = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
-                int actualCaret = (_caret == -1 ? _value.Length : _caret);
-
-                caretDstRect.Location = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, actualCaret);
-                caretDstRect.Location += TextParagraph._actualDestRect.Location;
+                Texture2D blankTexture = DrawUtils.GetBlankWhiteTexture(spriteBatch.GraphicsDevice);
+                spriteBatch.Draw(blankTexture, caretDstRect, DrawUtils.rectangle_1x1, TextParagraph.FillColor);
             }
-
-            spriteBatch.Draw(blankTexture, caretDstRect, new Rectangle(0, 0, 1, 1), TextParagraph.FillColor);
         }
 
         /// <summary>

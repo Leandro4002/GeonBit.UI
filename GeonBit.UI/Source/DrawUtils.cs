@@ -17,6 +17,9 @@ namespace GeonBit.UI
     /// </summary>
     public class DrawUtils
     {
+        /// <summary>Small 1x1 rectangle. Used so we don't create a new rectangle every time we want a 1x1 rectangle.</summary>
+        public static Rectangle rectangle_1x1 = new Rectangle(0, 0, 1, 1);
+
         static Texture2D _blankTexture;
 
         /// <summary>
