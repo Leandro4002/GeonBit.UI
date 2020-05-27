@@ -469,6 +469,7 @@ namespace GeonBit.UI.Entities
             int oldNumOfCharacter = 0, numOfCharacter = 0;
             int currentLine = 0;
             bool loopBroken = false;
+            caret = (caret == -1 ? _value.Length : caret);
 
             // we iterate trought each line to find the caret position
             foreach (string line in linesToScan)
@@ -503,7 +504,7 @@ namespace GeonBit.UI.Entities
             // recalculate caret position
             Vector2 charSize = TextParagraph.GetCharacterActualSize();
             Point carretPosition = new Point();
-            carretPosition.X = (int)(charSize.X * localCaret - CARET_WIDTH / 2);
+            carretPosition.X = (int)(charSize.X * localCaret);
             carretPosition.Y = (int)(currentLine * charSize.Y);
             return carretPosition;
         }
@@ -538,9 +539,8 @@ namespace GeonBit.UI.Entities
                 {
                     string[] linesToScan = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
                     Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
-                    int actualCaret = (_caret == -1 ? _value.Length : _caret);
 
-                    caretDstRect.Location = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, actualCaret);
+                    caretDstRect.Location = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, _caret);
                     caretDstRect.Location += TextParagraph._actualDestRect.Location;
                 }
 
@@ -614,6 +614,7 @@ namespace GeonBit.UI.Entities
             bool carretIsInVisibleArea = caretDstRect.Y >= _destRectInternal.Y && caretDstRect.Y < _destRectInternal.Y + _destRectInternal.Height;
             if (IsCaretCurrentlyVisible && ((_multiLine && carretIsInVisibleArea) || !_multiLine))
             {
+                caretDstRect.X -= CARET_WIDTH / 2;
                 Texture2D blankTexture = DrawUtils.GetBlankWhiteTexture(spriteBatch.GraphicsDevice);
                 spriteBatch.Draw(blankTexture, caretDstRect, DrawUtils.rectangle_1x1, TextParagraph.FillColor);
             }
@@ -712,39 +713,117 @@ namespace GeonBit.UI.Entities
                 // validate caret position
                 FixCaretPosition();
 
-                // get caret position
-                int pos = _caret;
+                // get user input
+                char? currCharacterInput = KeyboardInput.GetTextInput();
 
-                // store old string and update based on user input
-                string oldVal = _value;
-                _value = KeyboardInput.GetTextInput(_value, TextParagraph.MaxCharactersInLine, ref pos);
-
-                // if the caret moved, make it stay a little longer on screen before blinking again
-                if (_caret != pos) PauseCaretBlink();
-
-                // update caret position
-                _caret = pos;
-
-                // if value changed:
-                if (_value != oldVal)
+                // if input char is valid
+                if (currCharacterInput != null)
                 {
-                    // if new characters were added and input is now illegal, revert to previous value
-                    if (!ValidateInput(ref _value, oldVal))
+                    // init some values to handle user input
+                    string oldVal = _value;
+                    int newCaretPos = (_caret == -1 ? _value.Length : _caret);
+
+                    // get caret position
+                    string[] processedTextLines = PrepareInputTextForDisplay(false).Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                    Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
+                    Point caretPosition = CalculateCaretPositionForMultiline(processedTextLines, processedTextLinesCodes, _caret);
+
+                    // find current line
+                    Vector2 charSize = TextParagraph.GetCharacterActualSize();
+                    int currentLine = (int)(caretPosition.Y / charSize.Y);
+                    int charPositionInCurrentLine = (int)(caretPosition.X / charSize.X);
+
+                    // handle special key press (control character like space or delete) and normal keys
+                    switch (currCharacterInput)
                     {
-                        _value = oldVal;
+                        case (char)SpecialChars.Backspace:
+                            newCaretPos--;
+                            if (newCaretPos < _value.Length && newCaretPos >= 0 && _value.Length > 0) _value = _value.Remove(newCaretPos, 1);
+                            break;
+                        case (char)SpecialChars.Delete:
+                            if (newCaretPos < _value.Length && _value.Length > 0) _value = _value.Remove(newCaretPos, 1);
+                            break;
+                        case (char)SpecialChars.ArrowLeft: if (--newCaretPos < 0) { newCaretPos = 0; } break;
+                        case (char)SpecialChars.ArrowRight: if (++newCaretPos > _value.Length) { newCaretPos = _value.Length; } break;
+                        case (char)SpecialChars.ArrowUp:
+                            if (currentLine != 0)
+                            {
+                                // go at begining of the line
+                                newCaretPos -= charPositionInCurrentLine;
+
+                                // go before newline character
+                                newCaretPos--;
+
+                                // get the number of character needed to be removed
+                                int delta = processedTextLines[currentLine - 1].Length - charPositionInCurrentLine;
+                                switch (processedTextLinesCodes[currentLine - 1])
+                                {
+                                    case Paragraph.LineType.WordWrap: delta--; break; // word wraped to next line
+                                    case Paragraph.LineType.WordBroken: delta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                                }
+
+                                // if the line before has more characters than current carret index, correct carret position
+                                if (delta > 0) newCaretPos -= delta;
+                            }
+                            break;
+                        case (char)SpecialChars.ArrowDown:
+                            if (currentLine != processedTextLines.Length - 1)
+                            {
+                                // go at the end of the line
+                                newCaretPos += processedTextLines[currentLine].Length - charPositionInCurrentLine;
+                                switch (processedTextLinesCodes[currentLine])
+                                {
+                                    case Paragraph.LineType.WordWrap: newCaretPos--; break; // word wraped to next line
+                                    case Paragraph.LineType.WordBroken: newCaretPos -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                                }
+
+                                // we go after the newline character
+                                newCaretPos++;
+
+                                // get number of actual char of the next line (remove word wrap and word break characters)
+                                int numberOfActualCharInNextLine = processedTextLines[currentLine + 1].Length;
+                                switch (processedTextLinesCodes[currentLine + 1])
+                                {
+                                    case Paragraph.LineType.WordWrap: numberOfActualCharInNextLine--; break; // word wraped to next line
+                                    case Paragraph.LineType.WordBroken: numberOfActualCharInNextLine -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                                }
+
+                                // if the next line has less characters the the index of the caret,
+                                // we put the caret at the end of the next line. Otherwise we calculate the position
+                                if (numberOfActualCharInNextLine > charPositionInCurrentLine) newCaretPos += charPositionInCurrentLine;
+                                else newCaretPos += numberOfActualCharInNextLine;
+                            }
+                            break;
+                        default: _value = _value.Insert(newCaretPos++, currCharacterInput.ToString()); break;
                     }
 
-                    // call change event
+                    // if carret move or text change, make it stay a little longer on screen before blinking again
+                    if (_caret != newCaretPos || _value != oldVal) PauseCaretBlink();
+
+                    // update caret position
+                    _caret = newCaretPos;
+
+                    // if value changed:
                     if (_value != oldVal)
                     {
-                        DoOnValueChange();
+                        // if new characters were added and input is now illegal, revert to previous value
+                        if (!ValidateInput(ref _value, oldVal))
+                        {
+                            _value = oldVal;
+                        }
+
+                        // call change event
+                        if (_value != oldVal)
+                        {
+                            DoOnValueChange();
+                        }
+
+                        // after change, scroll to caret
+                        ScrollToCaret();
+
+                        // fix caret position
+                        FixCaretPosition();
                     }
-
-                    // after change, scroll to caret
-                    ScrollToCaret();
-
-                    // fix caret position
-                    FixCaretPosition();
                 }
             }
 

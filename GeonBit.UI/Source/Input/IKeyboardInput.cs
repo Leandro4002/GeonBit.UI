@@ -43,13 +43,9 @@ namespace GeonBit.UI
 
         /// <summary>
         /// Get textual input from keyboard.
-        /// If user enter keys it will push them into string, if delete or backspace will remove chars, etc.
         /// This also handles keyboard cooldown, to make it feel like windows-input.
         /// </summary>
-        /// <param name="txt">String to push text input into.</param>
-        /// <param name="lineWidth">How many characters can fit in a line.</param>
-        /// <param name="pos">Position to insert / remove characters. -1 to push at the end of string. After done, will contain actual new caret position.</param>
-        /// <returns>String after text input applied on it.</returns>
-        string GetTextInput(string txt, int lineWidth, ref int pos);
+        /// <returns>The char after text input applied on it. If the input is invalid, return null.</returns>
+        char? GetTextInput();
     }
 }

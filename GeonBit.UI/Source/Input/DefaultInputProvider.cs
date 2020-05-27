@@ -413,61 +413,16 @@ namespace GeonBit.UI
         /// If user enter keys it will push them into string, if delete or backspace will remove chars, etc.
         /// This also handles keyboard cooldown, to make it feel like windows-input.
         /// </summary>
-        /// <param name="txt">String to push text input into.</param>
-        /// <param name="lineWidth">How many characters can fit in a line.</param>
-        /// <param name="pos">Position to insert / remove characters. -1 to push at the end of string. After done, will contain actual new caret position.</param>
-        /// <returns>String after text input applied on it.</returns>
-        public string GetTextInput(string txt, int lineWidth, ref int pos)
+        /// <returns>The char after text input applied on it.</returns>
+        public char? GetTextInput()
         {
             // if need to skip due to cooldown time
-            if (!_newKeyIsPressed && _keyboardInputCooldown > 0f)
-            {
-                return txt;
-            }
+            if (!_newKeyIsPressed && _keyboardInputCooldown > 0f) return null;
 
             // if no valid characters are currently input
-            if (_currCharacterInput == (char)SpecialChars.Null)
-            {
-                return txt;
-            }
+            if (_currCharacterInput == (char)SpecialChars.Null) return null;
 
-            // get default position
-            if (pos == -1)
-            {
-                pos = txt.Length;
-            }
-
-            // handle special chars
-            switch (_currCharacterInput)
-            {
-                case (char)SpecialChars.ArrowLeft:
-                    if (--pos < 0) { pos = 0; }
-                    return txt;
-
-                case (char)SpecialChars.ArrowRight:
-                    if (++pos > txt.Length) { pos = txt.Length; }
-                    return txt;
-
-                case (char)SpecialChars.ArrowUp:
-                    pos -= lineWidth;
-                    if (pos < 0) { pos = 0; }
-                    return txt;
-
-                case (char)SpecialChars.ArrowDown:
-                    pos += lineWidth;
-                    if (pos > txt.Length) { pos = txt.Length; }
-                    return txt;
-
-                case (char)SpecialChars.Backspace:
-                    pos--;
-                    return (pos < txt.Length && pos >= 0 && txt.Length > 0) ? txt.Remove(pos, 1) : txt;
-
-                case (char)SpecialChars.Delete:
-                    return (pos < txt.Length && txt.Length > 0) ? txt.Remove(pos, 1) : txt;
-            }
-
-            // add current character
-            return txt.Insert(pos++, _currCharacterInput.ToString());
+            return _currCharacterInput;
         }
 
         /// <summary>
