@@ -76,9 +76,12 @@ namespace GeonBit.UI.Entities
         public bool IsCaretCurrentlyVisible {
             get
             {
-                if (!IsFocused) {
+                if (!IsFocused)
+                {
                     return false;
-                } else {
+                }
+                else
+                {
                     return _caretAnim < 0 || (int)_caretAnim % 2 == 0;
                 }
             }
@@ -747,7 +750,8 @@ namespace GeonBit.UI.Entities
                         int charPositionInCurrentLine = (int)(caretPosition.X / charSize.X);
 
                         // handle special key press (control character like space or delete)
-                        switch (currCharacterInput) {
+                        switch (currCharacterInput)
+                        {
                             case (char)SpecialChars.Home:
                                 // go at the begining of the current line
                                 newCaretPos -= charPositionInCurrentLine;
@@ -755,14 +759,16 @@ namespace GeonBit.UI.Entities
                             case (char)SpecialChars.End:
                                 // go at the end of the current line
                                 int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                switch (processedTextLinesCodes[currentLine]) {
+                                switch (processedTextLinesCodes[currentLine])
+                                {
                                     case Paragraph.LineType.WordWrap: charDelta--; break; // word wraped to next line
                                     case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
                                 }
                                 newCaretPos += charDelta;
                                 break;
                             case (char)SpecialChars.ArrowUp:
-                                if (currentLine != 0) {
+                                if (currentLine != 0)
+                                {
                                     // go at begining of the line
                                     newCaretPos -= charPositionInCurrentLine;
 
@@ -771,7 +777,8 @@ namespace GeonBit.UI.Entities
 
                                     // get the number of character needed to be removed
                                     int delta = processedTextLines[currentLine - 1].Length - charPositionInCurrentLine;
-                                    switch (processedTextLinesCodes[currentLine - 1]) {
+                                    switch (processedTextLinesCodes[currentLine - 1])
+                                    {
                                         case Paragraph.LineType.WordWrap: delta--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: delta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
                                     }
@@ -781,10 +788,12 @@ namespace GeonBit.UI.Entities
                                 }
                                 break;
                             case (char)SpecialChars.ArrowDown:
-                                if (currentLine != processedTextLines.Length - 1) {
+                                if (currentLine != processedTextLines.Length - 1)
+                                {
                                     // go at the end of the line
                                     newCaretPos += processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                    switch (processedTextLinesCodes[currentLine]) {
+                                    switch (processedTextLinesCodes[currentLine])
+                                    {
                                         case Paragraph.LineType.WordWrap: newCaretPos--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: newCaretPos -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
                                     }
@@ -794,7 +803,8 @@ namespace GeonBit.UI.Entities
 
                                     // get number of actual char of the next line (remove word wrap and word break characters)
                                     int numberOfActualCharInNextLine = processedTextLines[currentLine + 1].Length;
-                                    switch (processedTextLinesCodes[currentLine + 1]) {
+                                    switch (processedTextLinesCodes[currentLine + 1])
+                                    {
                                         case Paragraph.LineType.WordWrap: numberOfActualCharInNextLine--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: numberOfActualCharInNextLine -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
                                     }
@@ -810,7 +820,8 @@ namespace GeonBit.UI.Entities
                     else
                     {
                         // handle special key press (control character like home or arrow keys)
-                        switch (currCharacterInput) {
+                        switch (currCharacterInput)
+                        {
                             case (char)SpecialChars.Home:
                                 // go at the begining of the current line
                                 newCaretPos = 0;
@@ -826,6 +837,7 @@ namespace GeonBit.UI.Entities
                     switch (currCharacterInput)
                     {
                         case (char)SpecialChars.Backspace:
+                            if (newCaretPos <= 0) break;
                             newCaretPos--;
                             if (newCaretPos < _value.Length && newCaretPos >= 0 && _value.Length > 0) _value = _value.Remove(newCaretPos, 1);
                             break;
@@ -840,7 +852,8 @@ namespace GeonBit.UI.Entities
                     // for normal character input, insert them in the text
                     SpecialChars[] specialCharsEnum = Enum.GetValues(typeof(SpecialChars)).Cast<SpecialChars>().ToArray();
                     char[] specialChars = Array.ConvertAll(specialCharsEnum, item => (char)item);
-                    if (!specialChars.Contains((char)currCharacterInput)) {
+                    if (!specialChars.Contains((char)currCharacterInput))
+                    {
                         _value = _value.Insert(newCaretPos++, currCharacterInput.ToString());
                     }
 
@@ -866,12 +879,12 @@ namespace GeonBit.UI.Entities
                             DoOnValueChange();
                         }
 
-                        // after change, scroll to caret
-                        ScrollToCaret();
-
                         // fix caret position
                         FixCaretPosition();
                     }
+
+                    // when a key is pressed scroll to caret
+                    ScrollToCaret();
                 }
             }
 

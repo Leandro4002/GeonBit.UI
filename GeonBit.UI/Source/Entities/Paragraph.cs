@@ -501,7 +501,8 @@ namespace GeonBit.UI.Entities
                 }
 
                 // when processedText has multiple line, that last line has an extra carriage return (\r)
-                if (newProcessedText.Length > 0 && newProcessedText[newProcessedText.Length - 1] == '\r') {
+                if (newProcessedText.Length > 0 && newProcessedText[newProcessedText.Length - 1] == '\r')
+                {
                     newProcessedText = newProcessedText.Remove(newProcessedText.Length - 1, 1);
                 }
             }
