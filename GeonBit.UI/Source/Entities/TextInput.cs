@@ -379,9 +379,8 @@ namespace GeonBit.UI.Entities
         /// Prepare the input paragraph for display.
         /// </summary>
         /// <param name="usePlaceholder">If true, will use the placeholder text. Else, will use the real input text.</param>
-        /// <param name="showCaret">If true, will also add the caret text when needed. If false, will not show caret.</param>
         /// <returns>Processed text that will actually be displayed on screen.</returns>
-        protected string PrepareInputTextForDisplay(bool usePlaceholder, bool showCaret)
+        protected string PrepareInputTextForDisplay(bool usePlaceholder)
         {
             // set main text when hidden with password char
             if (HideInputWithChar != null)
@@ -464,7 +463,14 @@ namespace GeonBit.UI.Entities
             PauseCaretBlink();
         }
 
-        private Point CalculateCaretPositionForMultiline(string[] linesToScan, Paragraph.LineType[] linesType, int caret)
+        /// <summary>
+        /// Calculate the carret position for multiline textInput. 
+        /// </summary>
+        /// <param name="processedTextLinesCodes">The processed text lines (text with word wrap and word break)</param>
+        /// <param name="linesType">Contains the type of each line (normal, word wrap and word break)</param>
+        /// <param name="caret">caret position</param>
+        /// <returns></returns>
+        private Point CalculateCaretPositionForMultiline(string[] processedTextLinesCodes, Paragraph.LineType[] linesType, int caret)
         {
             int oldNumOfCharacter = 0, numOfCharacter = 0;
             int currentLine = 0;
@@ -472,7 +478,7 @@ namespace GeonBit.UI.Entities
             caret = (caret == -1 ? _value.Length : caret);
 
             // we iterate trought each line to find the caret position
-            foreach (string line in linesToScan)
+            foreach (string line in processedTextLinesCodes)
             {
                 oldNumOfCharacter = numOfCharacter;
 
@@ -524,7 +530,7 @@ namespace GeonBit.UI.Entities
             Paragraph currParagraph = showPlaceholder ? PlaceholderParagraph : TextParagraph;
 
             // get actual processed string
-            _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder, IsFocused);
+            _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder);
 
             // init some value for carret calculation
             Vector2 charSize = TextParagraph.GetCharacterActualSize();
@@ -563,7 +569,7 @@ namespace GeonBit.UI.Entities
                         if (currParagraph.Size.X != prevWidth)
                         {
                             // update size and re-calculate lines in text
-                            _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder, IsFocused);
+                            _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder);
                             linesInText = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).Length;
                         }
 
@@ -647,7 +653,7 @@ namespace GeonBit.UI.Entities
             if (LimitBySize)
             {
                 // prepare display
-                PrepareInputTextForDisplay(false, false);
+                PrepareInputTextForDisplay(false);
 
                 // get main paragraph actual size
                 Rectangle textSize = TextParagraph.GetActualDestRect();
