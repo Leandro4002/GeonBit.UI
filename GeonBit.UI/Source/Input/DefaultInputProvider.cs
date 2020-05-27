@@ -1,4 +1,4 @@
-﻿#region File Description
+#region File Description
 //-----------------------------------------------------------------------------
 // Helper utility that implements default mouse and keyboard input for GeonBit.UI.
 // You can create your own mouse/keyboard inputs to replace this.
@@ -231,6 +231,14 @@ namespace GeonBit.UI
 
                 case Keys.Back:
                     _currCharacterInput = (char)SpecialChars.Backspace;
+                    return;
+
+                case Keys.Home:
+                    _currCharacterInput = (char)SpecialChars.Home;
+                    return;
+
+                case Keys.End:
+                    _currCharacterInput = (char)SpecialChars.End;
                     return;
 
                 case Keys.CapsLock:

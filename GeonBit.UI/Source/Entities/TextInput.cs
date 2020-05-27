@@ -749,6 +749,20 @@ namespace GeonBit.UI.Entities
                         case (char)SpecialChars.Delete:
                             if (newCaretPos < _value.Length && _value.Length > 0) _value = _value.Remove(newCaretPos, 1);
                             break;
+                        case (char)SpecialChars.Home:
+                            // go at the begining of the current line
+                            newCaretPos -= charPositionInCurrentLine;
+                            break;
+                        case (char)SpecialChars.End:
+                            // go at the end of the current line
+                            int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
+                            switch (processedTextLinesCodes[currentLine ])
+                            {
+                                case Paragraph.LineType.WordWrap: charDelta--;  break; // word wraped to next line
+                                case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                            }
+                            newCaretPos += charDelta;
+                            break;
                         case (char)SpecialChars.ArrowLeft: if (--newCaretPos < 0) { newCaretPos = 0; } break;
                         case (char)SpecialChars.ArrowRight: if (++newCaretPos > _value.Length) { newCaretPos = _value.Length; } break;
                         case (char)SpecialChars.ArrowUp:

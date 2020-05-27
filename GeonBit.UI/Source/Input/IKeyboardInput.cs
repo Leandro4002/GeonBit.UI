@@ -17,6 +17,7 @@ namespace GeonBit.UI
     /// <summary>
     /// Some special characters input.
     /// Note: enum values are based on ascii table values for these special characters.
+    /// To see which scancode to use, see https://stackoverflow.com/questions/10832522/ascii-codes-for-windows-keyboard-keys-and-the-codes-for-function-keysf1-f12
     /// </summary>
     enum SpecialChars
     {
@@ -28,6 +29,8 @@ namespace GeonBit.UI
         ArrowRight = 2,     // arrow right - moving caret right
         ArrowUp = 3,        // arrow up - moving caret line up
         ArrowDown = 4,      // arrow down - moving caret line down
+        Home = 36,          // home char
+        End = 35,           // end char
     };
 
     /// <summary>
