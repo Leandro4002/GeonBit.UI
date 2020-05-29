@@ -752,19 +752,24 @@ namespace GeonBit.UI.Entities
                         // handle special key press (control character like space or delete)
                         switch (currCharacterInput)
                         {
+                            // go to the begining of the text
                             case (char)SpecialChars.Home:
-                                // go at the begining of the current line
-                                newCaretPos -= charPositionInCurrentLine;
+                                if (UserInterface.Active.isControlDown) newCaretPos = 0;
+                                else newCaretPos -= charPositionInCurrentLine;
                                 break;
+                            // go to the end of the text
                             case (char)SpecialChars.End:
-                                // go at the end of the current line
-                                int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                switch (processedTextLinesCodes[currentLine])
+                                if (UserInterface.Active.isControlDown) newCaretPos = _value.Length;
+                                else
                                 {
-                                    case Paragraph.LineType.WordWrap: charDelta--; break; // word wraped to next line
-                                    case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                                    int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
+                                    switch (processedTextLinesCodes[currentLine])
+                                    {
+                                        case Paragraph.LineType.WordWrap: charDelta--; break; // word wraped to next line
+                                        case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                                    }
+                                    newCaretPos += charDelta;
                                 }
-                                newCaretPos += charDelta;
                                 break;
                             case (char)SpecialChars.ArrowUp:
                                 if (currentLine != 0)

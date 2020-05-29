@@ -1,4 +1,4 @@
-﻿#region File Description
+#region File Description
 //-----------------------------------------------------------------------------
 // This file define the main class that manage and draw the UI.
 // To use GeonBit.UI you first need to create an instance of this class and
@@ -117,6 +117,12 @@ namespace GeonBit.UI
         /// with your own object that emulates keyboard input.
         /// </summary>
         public IKeyboardInput KeyboardInputProvider;
+
+        /// <summary>Wheter or not a shift key is pressed (shift_left or shift_right).</summary>
+        public bool isShiftDown;
+
+        /// <summary>Wheter or not a control key is pressed (ctrl_left or ctrl_right).</summary>
+        public bool isControlDown;
 
         /// <summary>
         /// Get current game time value.

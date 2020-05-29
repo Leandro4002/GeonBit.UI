@@ -195,8 +195,9 @@ namespace GeonBit.UI
             _keyboardInputCooldown = KeysTypeCooldown;
             _newKeyIsPressed = true;
 
-            // get if shift is currently down
-            bool isShiftDown = _newKeyboardState.IsKeyDown(Keys.LeftShift) || _newKeyboardState.IsKeyDown(Keys.RightShift);
+            // set "shift" and "control" key state for current user interface
+            bool isShiftDown = UserInterface.Active.isShiftDown = _newKeyboardState.IsKeyDown(Keys.LeftShift) || _newKeyboardState.IsKeyDown(Keys.RightShift);
+            bool isControlDown = UserInterface.Active.isControlDown = _newKeyboardState.IsKeyDown(Keys.LeftControl) || _newKeyboardState.IsKeyDown(Keys.RightControl);
 
             // set curr input key, but also keep the previous key in case we need to revert
             Keys prevKey = _currCharacterInputKey;
