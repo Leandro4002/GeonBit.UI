@@ -325,9 +325,8 @@ namespace GeonBit.UI.Entities
                 TextParagraph.CalcTextActualRectWithWrap();
 
                 // get caret position
-                string[] linesToScan = TextParagraph.GetProcessedText().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
-                Point caretPosition = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, _caret);
+                string processedText = TextParagraph.GetProcessedText();;
+                Point caretPosition = CalculateCaretPositionForMultiline(processedText, _caret);
 
                 // find current line
                 Vector2 charSize = TextParagraph.GetCharacterActualSize();
@@ -437,20 +436,11 @@ namespace GeonBit.UI.Entities
                 // if multiline, take line into the formula
                 if (_multiLine)
                 {
-                    // get the whole processed text
+                    // calculate the caret position
                     TextParagraph.Text = _value;
                     TextParagraph.CalcTextActualRectWithWrap();
                     string processedValueText = TextParagraph.GetProcessedText();
-
-                    // calc y position and add scrollbar value to it
-                    int y = (int)(relativeOffset.Y / charSize.Y) + _scrollbar.Value;
-
-                    // break actual text into lines
-                    List<string> lines = new List<string>(processedValueText.Split('\n'));
-                    for (int i = 0; i < y && i < lines.Count; ++i)
-                    {
-                        _caret += lines[i].Length + 1;
-                    }
+                    _caret = GetCaretIndexFromPosition(relativeOffset, processedValueText);
                 }
 
                 // if override text length reset caret
@@ -469,21 +459,79 @@ namespace GeonBit.UI.Entities
         }
 
         /// <summary>
+        /// Get the caret index from a local position.
+        /// </summary>
+        /// <param name="localPosition">Position to calculate from (offseted at the origin of the textInput).</param>
+        /// <param name="processedText">The processed text (text with word wrap and word break).</param>
+        /// <returns>The calculated caret index.</returns>
+        private int GetCaretIndexFromPosition(Vector2 localPosition, string processedText)
+        {
+            string[] processedTextLines = processedText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            Vector2 charSize = TextParagraph.GetCharacterActualSize();
+
+            // get current line
+            int currentLine = (int)(localPosition.Y / charSize.Y) + _scrollbar.Value;
+
+            // check that currentLine is not bigger than number of actual lines
+            if (currentLine >= processedTextLines.Length) currentLine = processedTextLines.Length - 1;
+
+            // get the number of lines before the text is not visible because of text overflow
+            int numberOfLines = _scrollbar.Value + GetNumLinesFitInTheTextBox(TextParagraph);
+
+            // if we click outside the text range, set the current line to the last line of the visible text
+            if (currentLine >= numberOfLines) currentLine = numberOfLines - 1;
+
+            int caretPos = 0;
+
+            // for every lines beofre the current one, add offset
+            for (int i = 0; i < currentLine; i++)
+            {
+                caretPos += processedTextLines[i].Length + 1;
+                
+                switch (TextParagraph.ProcessedTextLinesTypes[i])
+                {
+                    case Paragraph.LineType.WordWrap: caretPos--; break; // word wraped to next line
+                    case Paragraph.LineType.WordBroken: caretPos -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                }
+            }
+
+            // get number of actual char in current line
+            // an "actual char" is a char that is in the actual text value of the text input, this removes the characters added by the word wrap and word break.
+            int numOfActualCharInCurrentLine = processedTextLines[currentLine].Length;
+            switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
+            {
+                case Paragraph.LineType.WordWrap: numOfActualCharInCurrentLine--; break; // word wraped to next line
+                case Paragraph.LineType.WordBroken: numOfActualCharInCurrentLine -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+            }
+
+            // clamp local position to maximum char length
+            float maxVal = numOfActualCharInCurrentLine * charSize.X;
+            if (localPosition.X > maxVal) localPosition.X = maxVal;
+
+            // add size of number of char at the left of the local position
+            caretPos += (int)(localPosition.X / charSize.X);
+
+            return caretPos;
+        }
+
+        /// <summary>
         /// Calculate the carret position for multiline textInput. 
         /// </summary>
-        /// <param name="processedTextLinesCodes">The processed text lines (text with word wrap and word break)</param>
-        /// <param name="linesType">Contains the type of each line (normal, word wrap and word break)</param>
-        /// <param name="caret">caret position</param>
-        /// <returns></returns>
-        private Point CalculateCaretPositionForMultiline(string[] processedTextLinesCodes, Paragraph.LineType[] linesType, int caret)
+        /// <param name="processedText">The processed text (text with word wrap and word break).</param>
+        /// <param name="caret">Caret position.</param>
+        /// <returns>The caret position.</returns>
+        private Point CalculateCaretPositionForMultiline(string processedText, int caret)
         {
+            Paragraph.LineType[] linesType = TextParagraph.ProcessedTextLinesTypes;
+            string[] processedTextLines = processedText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+
             int oldNumOfCharacter = 0, numOfCharacter = 0;
             int currentLine = 0;
             bool loopBroken = false;
             caret = (caret == -1 ? _value.Length : caret);
 
             // we iterate trought each line to find the caret position
-            foreach (string line in processedTextLinesCodes)
+            foreach (string line in processedTextLines)
             {
                 oldNumOfCharacter = numOfCharacter;
 
@@ -548,10 +596,7 @@ namespace GeonBit.UI.Entities
                 // if visible, calculate carret position for multiline TextInput
                 if (IsCaretCurrentlyVisible)
                 {
-                    string[] linesToScan = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                    Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
-
-                    caretDstRect.Location = CalculateCaretPositionForMultiline(linesToScan, processedTextLinesCodes, _caret);
+                    caretDstRect.Location = CalculateCaretPositionForMultiline(_actualDisplayText, _caret);
                     caretDstRect.Location += TextParagraph._actualDestRect.Location;
                 }
 
@@ -562,7 +607,7 @@ namespace GeonBit.UI.Entities
                 if (_actualDisplayText != null && _destRectInternal.Height > 0)
                 {
                     // get how many lines can fit in the textbox and how many lines display text actually have
-                    int linesFit = _destRectInternal.Height / (int)(System.Math.Max(currParagraph.GetCharacterActualSize().Y, 1));
+                    int linesFit = GetNumLinesFitInTheTextBox(currParagraph);
                     int linesInText = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).Length;
                     
                     // if there are more lines than can fit, show scrollbar and manage scrolling:
@@ -710,6 +755,18 @@ namespace GeonBit.UI.Entities
         }
 
         /// <summary>
+        /// Get the number of lines of text that can fit in the textbox.
+        /// </summary>
+        /// <param name="currParagraph">The text of which paragraph we want to check.</param>
+        /// <returns>Number of lines that can fit in the textbox.</returns>
+        private int GetNumLinesFitInTheTextBox(Paragraph currParagraph)
+        {
+            if (!_multiLine) return 1;
+            return _destRectInternal.Height / (int)(System.Math.Max(currParagraph.GetCharacterActualSize().Y, 1));
+        }
+
+
+        /// <summary>
         /// Called every frame before update.
         /// TextInput implement this function to get keyboard input and also to animate caret timer.
         /// </summary>
@@ -739,10 +796,10 @@ namespace GeonBit.UI.Entities
                     // 1 for multiline only, 1 for single line only and 1 for both
                     if (_multiLine)
                     {
-                        // get caret position
-                        string[] processedTextLines = PrepareInputTextForDisplay(false).Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                        Paragraph.LineType[] processedTextLinesCodes = TextParagraph.ProcessedTextLinesTypes;
-                        Point caretPosition = CalculateCaretPositionForMultiline(processedTextLines, processedTextLinesCodes, _caret);
+                        // get caret position and processedText
+                        string processedText = PrepareInputTextForDisplay(false);
+                        string[] processedTextLines = processedText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                        Point caretPosition = CalculateCaretPositionForMultiline(processedText, _caret);
 
                         // find current line
                         Vector2 charSize = TextParagraph.GetCharacterActualSize();
@@ -763,7 +820,7 @@ namespace GeonBit.UI.Entities
                                 else
                                 {
                                     int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                    switch (processedTextLinesCodes[currentLine])
+                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
                                     {
                                         case Paragraph.LineType.WordWrap: charDelta--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
@@ -782,7 +839,7 @@ namespace GeonBit.UI.Entities
 
                                     // get the number of character needed to be removed
                                     int delta = processedTextLines[currentLine - 1].Length - charPositionInCurrentLine;
-                                    switch (processedTextLinesCodes[currentLine - 1])
+                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine - 1])
                                     {
                                         case Paragraph.LineType.WordWrap: delta--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: delta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
@@ -797,7 +854,7 @@ namespace GeonBit.UI.Entities
                                 {
                                     // go at the end of the line
                                     newCaretPos += processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                    switch (processedTextLinesCodes[currentLine])
+                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
                                     {
                                         case Paragraph.LineType.WordWrap: newCaretPos--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: newCaretPos -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
@@ -808,7 +865,7 @@ namespace GeonBit.UI.Entities
 
                                     // get number of actual char of the next line (remove word wrap and word break characters)
                                     int numberOfActualCharInNextLine = processedTextLines[currentLine + 1].Length;
-                                    switch (processedTextLinesCodes[currentLine + 1])
+                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine + 1])
                                     {
                                         case Paragraph.LineType.WordWrap: numberOfActualCharInNextLine--; break; // word wraped to next line
                                         case Paragraph.LineType.WordBroken: numberOfActualCharInNextLine -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
