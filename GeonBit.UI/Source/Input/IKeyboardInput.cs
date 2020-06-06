@@ -1,4 +1,4 @@
-﻿#region File Description
+#region File Description
 //-----------------------------------------------------------------------------
 // Define the keyboard-based input interface. This is the object GeonBit.UI uses
 // to detect typing and key pressing.
@@ -10,6 +10,7 @@
 //-----------------------------------------------------------------------------
 #endregion
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 
 
 namespace GeonBit.UI
@@ -50,5 +51,11 @@ namespace GeonBit.UI
         /// </summary>
         /// <returns>The char after text input applied on it. If the input is invalid, return null.</returns>
         char? GetTextInput();
+
+        /// <summary>
+        /// Getter for the currently pressed key.
+        /// </summary>
+        /// <returns>The currently pressed key.</returns>
+        Keys GetInputKey();
     }
 }

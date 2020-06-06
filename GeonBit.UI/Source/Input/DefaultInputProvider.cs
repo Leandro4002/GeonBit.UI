@@ -7,8 +7,11 @@
 // Since: 2016.
 //-----------------------------------------------------------------------------
 #endregion
+using GeonBit.KeyboardLayouts;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using System;
+using System.Linq;
 
 namespace GeonBit.UI
 {
@@ -39,11 +42,14 @@ namespace GeonBit.UI
         /// <summary>An artificial "lag" after a key is pressed when typing text input, to prevent mistake duplications.</summary>
         public float KeysTypeCooldown = 0.6f;
 
-        // last character that was pressed down
-        char _currCharacterInput = (char)SpecialChars.Null;
+        // last character input key
+        char _currCharacterInput = '\0';
 
-        // last key that provide character input and was pressed
-        Keys _currCharacterInputKey = Keys.Escape;
+        // last key that was pressed
+        Keys _currInputKey = Keys.None;
+
+        // true or false if the user is holding the key down
+        bool _isHoldingKey;
 
         // keyboard input cooldown for textual input
         float _keyboardInputCooldown = 0f;
@@ -53,6 +59,14 @@ namespace GeonBit.UI
 
         // current capslock state
         bool _capslock = false;
+
+        // the keyboard layout when non has been set
+        Type defaultKeyboardLayout = typeof(US);
+
+        /// <summary>
+        /// The keyboard layout used when typing. (US, french, etc.).
+        /// </summary>
+        public KeyboardLayout keyboardLayout;
 
         /// <summary>
         /// Current mouse wheel value.
@@ -77,6 +91,9 @@ namespace GeonBit.UI
             // init mouse states
             _newMouseState = _oldMouseState;
             _newMousePos = new Vector2(_newMouseState.X, _newMouseState.Y);
+
+            // set default keyboardLayout
+            keyboardLayout = (KeyboardLayout)Activator.CreateInstance(defaultKeyboardLayout);
 
             // call first update to get starting positions
             Update(new GameTime());
@@ -131,11 +148,10 @@ namespace GeonBit.UI
                 _keyboardInputCooldown -= (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
 
-            // if current text input key is no longer down, reset text input character
-            if (_currCharacterInput != (char)SpecialChars.Null &&
-                !_newKeyboardState.IsKeyDown(_currCharacterInputKey))
+            // if current text input key is no longer down
+            if (_isHoldingKey && !_newKeyboardState.IsKeyDown(_currInputKey))
             {
-                _currCharacterInput = (char)SpecialChars.Null;
+                _isHoldingKey = false;
             }
 
             // send key-down events
@@ -191,248 +207,89 @@ namespace GeonBit.UI
         /// <param name="key">Key code that is being pressed down on this frame.</param>
         private void NewKeyTextInput(Keys key)
         {
-            // reset cooldown time and set new key pressed = true
+            // when key has just been pressed, set cooldown, which key has been pressed and a boolean to tell that a key is pressed
             _keyboardInputCooldown = KeysTypeCooldown;
+            _currInputKey = key;
             _newKeyIsPressed = true;
+            _isHoldingKey = true;
 
-            // set "shift" and "control" key state for current user interface
+            // set "shift", "alt gr" and "control" key state for current user interface
             bool isShiftDown = UserInterface.Active.isShiftDown = _newKeyboardState.IsKeyDown(Keys.LeftShift) || _newKeyboardState.IsKeyDown(Keys.RightShift);
             bool isControlDown = UserInterface.Active.isControlDown = _newKeyboardState.IsKeyDown(Keys.LeftControl) || _newKeyboardState.IsKeyDown(Keys.RightControl);
+            bool isAltGrDown = UserInterface.Active.isAltGrDown = _newKeyboardState.IsKeyDown(Keys.RightAlt);
 
-            // set curr input key, but also keep the previous key in case we need to revert
-            Keys prevKey = _currCharacterInputKey;
-            _currCharacterInputKey = key;
-
-            // handle special keys and characters
-            switch (key)
+            // if the pressed key is a control key, set current char input to empty and return
+            if (UserInterface.ControlKeys.Contains(_currInputKey))
             {
-                case Keys.Space:
-                    _currCharacterInput = (char)SpecialChars.Space;
-                    return;
-
-                case Keys.Left:
-                    _currCharacterInput = (char)SpecialChars.ArrowLeft;
-                    return;
-
-                case Keys.Right:
-                    _currCharacterInput = (char)SpecialChars.ArrowRight;
-                    return;
-
-                case Keys.Up:
-                    _currCharacterInput = (char)SpecialChars.ArrowUp;
-                    return;
-
-                case Keys.Down:
-                    _currCharacterInput = (char)SpecialChars.ArrowDown;
-                    return;
-
-                case Keys.Delete:
-                    _currCharacterInput = (char)SpecialChars.Delete;
-                    return;
-
-                case Keys.Back:
-                    _currCharacterInput = (char)SpecialChars.Backspace;
-                    return;
-
-                case Keys.Home:
-                    _currCharacterInput = (char)SpecialChars.Home;
-                    return;
-
-                case Keys.End:
-                    _currCharacterInput = (char)SpecialChars.End;
-                    return;
-
-                case Keys.CapsLock:
-                case Keys.RightShift:
-                case Keys.LeftShift:
-                    _newKeyIsPressed = false;
-                    return;
-
-                // line break
-                case Keys.Enter:
-                    _currCharacterInput = '\n';
-                    return;
-
-                // number 0
-                case Keys.D0:
-                case Keys.NumPad0:
-                    _currCharacterInput = (isShiftDown && key == Keys.D0) ? ')' : '0';
-                    return;
-
-                // number 9
-                case Keys.D9:
-                case Keys.NumPad9:
-                    _currCharacterInput = (isShiftDown && key == Keys.D9) ? '(' : '9';
-                    return;
-
-                // number 8
-                case Keys.D8:
-                case Keys.NumPad8:
-                    _currCharacterInput = (isShiftDown && key == Keys.D8) ? '*' : '8';
-                    return;
-
-                // number 7
-                case Keys.D7:
-                case Keys.NumPad7:
-                    _currCharacterInput = (isShiftDown && key == Keys.D7) ? '&' : '7';
-                    return;
-
-                // number 6
-                case Keys.D6:
-                case Keys.NumPad6:
-                    _currCharacterInput = (isShiftDown && key == Keys.D6) ? '^' : '6';
-                    return;
-
-                // number 5
-                case Keys.D5:
-                case Keys.NumPad5:
-                    _currCharacterInput = (isShiftDown && key == Keys.D5) ? '%' : '5';
-                    return;
-
-                // number 4
-                case Keys.D4:
-                case Keys.NumPad4:
-                    _currCharacterInput = (isShiftDown && key == Keys.D4) ? '$' : '4';
-                    return;
-
-                // number 3
-                case Keys.D3:
-                case Keys.NumPad3:
-                    _currCharacterInput = (isShiftDown && key == Keys.D3) ? '#' : '3';
-                    return;
-
-                // number 2
-                case Keys.D2:
-                case Keys.NumPad2:
-                    _currCharacterInput = (isShiftDown && key == Keys.D2) ? '@' : '2';
-                    return;
-
-                // number 1
-                case Keys.D1:
-                case Keys.NumPad1:
-                    _currCharacterInput = (isShiftDown && key == Keys.D1) ? '!' : '1';
-                    return;
-
-                // question mark
-                case Keys.OemQuestion:
-                    _currCharacterInput = isShiftDown ? '?' : '/';
-                    return;
-
-                // quotes
-                case Keys.OemQuotes:
-                    _currCharacterInput = isShiftDown ? '\"' : '\'';
-                    return;
-
-                // semicolon
-                case Keys.OemSemicolon:
-                    _currCharacterInput = isShiftDown ? ':' : ';';
-                    return;
-
-                // tilde
-                case Keys.OemTilde:
-                    _currCharacterInput = isShiftDown ? '~' : '`';
-                    return;
-
-                // open brackets
-                case Keys.OemOpenBrackets:
-                    _currCharacterInput = isShiftDown ? '{' : '[';
-                    return;
-
-                // close brackets
-                case Keys.OemCloseBrackets:
-                    _currCharacterInput = isShiftDown ? '}' : ']';
-                    return;
-
-                // add
-                case Keys.OemPlus:
-                case Keys.Add:
-                    _currCharacterInput = (isShiftDown || key == Keys.Add) ? '+' : '=';
-                    return;
-
-                // substract
-                case Keys.OemMinus:
-                case Keys.Subtract:
-                    _currCharacterInput = isShiftDown ? '_' : '-';
-                    return;
-
-                // decimal dot
-                case Keys.OemPeriod:
-                case Keys.Decimal:
-                    _currCharacterInput = isShiftDown ? '>' : '.';
-                    return;
-
-                // divide
-                case Keys.Divide:
-                    _currCharacterInput = isShiftDown ? '?' : '/';
-                    return;
-
-                // multiply
-                case Keys.Multiply:
-                    _currCharacterInput = '*';
-                    return;
-
-                // backslash
-                case Keys.OemBackslash:
-                    _currCharacterInput = isShiftDown ? '|' : '\\';
-                    return;
-
-                // comma
-                case Keys.OemComma:
-                    _currCharacterInput = isShiftDown ? '<' : ',';
-                    return;
-
-                // tab
-                case Keys.Tab:
-                    _currCharacterInput = ' ';
-                    return;
-
-                // not a special char - revert last character input key and continue processing.
-                default:
-                    _currCharacterInputKey = prevKey;
-                    break;
-            };
-
-            // get current key thats getting pressed as a string
-            string lastCharPressedStr = key.ToString();
-
-            // if character is not a valid char but a special key we don't want to handle, skip
-            // (note: keys that are characters should have length of 1)
-            if (lastCharPressedStr.Length > 1)
-            {
+                _currCharacterInput = '\0';
                 return;
             }
 
-            // set current key as the current text input key
-            _currCharacterInputKey = key;
+            // we do not allow to enter a key with alt gr and shift pressed down (this is the normal behaviour on most text editors)
+            if (isAltGrDown && isShiftDown) return;
 
-            // get current capslock state and invert if shift is down
-            bool capsLock = _capslock;
-            if (isShiftDown)
+            // if the pressedKey is a letter and we didn't press alt gr, bypass the "shift" validation
+            // to set uppercase accordingly with "caps lock" and "shift" state
+            if (key >= Keys.A && key <= Keys.Z && !isAltGrDown)
             {
-                capsLock = !capsLock;
+                bool isUpperCase = (isShiftDown) ? !_capslock : _capslock;
+
+                if (isUpperCase && keyboardLayout.ShiftKeys.ContainsKey(key))
+                {
+                    _currCharacterInput = keyboardLayout.ShiftKeys[key];
+                }
+                else if (keyboardLayout.NormalKeys.ContainsKey(key))
+                {
+                    _currCharacterInput = keyboardLayout.NormalKeys[key];
+                }
+
+                return;
             }
 
-            // fix case and set as current char pressed
-            _currCharacterInput = (capsLock ? lastCharPressedStr.ToUpper() : lastCharPressedStr.ToLower())[0];
+            // normal keys
+            if (!isShiftDown && !isAltGrDown && keyboardLayout.NormalKeys.ContainsKey(key))
+            {
+                _currCharacterInput = keyboardLayout.NormalKeys[key];
+                return;
+            }
+            // shift keys
+            else if (isShiftDown && keyboardLayout.ShiftKeys.ContainsKey(key))
+            {
+                _currCharacterInput = keyboardLayout.ShiftKeys[key];
+                return;
+            }
+            // alt gr keys
+            else if (isAltGrDown && keyboardLayout.AltGrKeys.ContainsKey(key))
+            {
+                _currCharacterInput = keyboardLayout.AltGrKeys[key];
+                return;
+            }
 
+            // unhandled character
+            _currCharacterInput = '\0';
         }
 
         /// <summary>
         /// Get textual input from keyboard.
-        /// If user enter keys it will push them into string, if delete or backspace will remove chars, etc.
         /// This also handles keyboard cooldown, to make it feel like windows-input.
         /// </summary>
-        /// <returns>The char after text input applied on it.</returns>
+        /// <returns>The char after text input applied on it. If the input is invalid, return null.</returns>
         public char? GetTextInput()
         {
             // if need to skip due to cooldown time
             if (!_newKeyIsPressed && _keyboardInputCooldown > 0f) return null;
 
-            // if no valid characters are currently input
-            if (_currCharacterInput == (char)SpecialChars.Null) return null;
+            // if the user is not holding the key, don't send char
+            if (!_isHoldingKey) return null;
 
             return _currCharacterInput;
         }
+
+        /// <summary>
+        /// Getter for the currently pressed key.
+        /// </summary>
+        /// <returns>The currently pressed key.</returns>
+        public Keys GetInputKey() => _currInputKey;
 
         /// <summary>
         /// Get current mouse poisition.

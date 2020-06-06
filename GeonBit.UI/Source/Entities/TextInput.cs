@@ -13,6 +13,7 @@ using GeonBit.UI.Entities.TextValidators;
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Xna.Framework.Input;
 
 namespace GeonBit.UI.Entities
 {
@@ -775,183 +776,190 @@ namespace GeonBit.UI.Entities
             // animate caret
             _caretAnim += (float)UserInterface.Active.CurrGameTime.ElapsedGameTime.TotalSeconds * CaretBlinkingSpeed;
 
-            // if focused, and got character input in this frame..
-            if (IsFocused)
+            // if the element is not focused, return
+            if (!IsFocused) return;
+            
+            // validate caret position
+            FixCaretPosition();
+
+            // get user input
+            char? currCharacterInput = KeyboardInput.GetTextInput();
+            Keys currCharacterInputKey = KeyboardInput.GetInputKey();
+
+            // if input char is invalid, return
+            if (currCharacterInput == null) return;
+
+            // init some values to handle user input
+            string oldVal = _value;
+            int oldCaret = _caret;
+            int newCaretIndex = (_caret == -1 ? _value.Length : _caret);
+
+            if (currCharacterInput != '\0')
             {
-                // validate caret position
-                FixCaretPosition();
-
-                // get user input
-                char? currCharacterInput = KeyboardInput.GetTextInput();
-
-                // if input char is valid
-                if (currCharacterInput != null)
-                {
-                    // init some values to handle user input
-                    string oldVal = _value;
-                    int oldCaret = _caret;
-                    int newCaretPos = (_caret == -1 ? _value.Length : _caret);
-
-                    // here ther is 3 switch for inputs keys
-                    // 1 for multiline only, 1 for single line only and 1 for both
-                    if (_multiLine)
-                    {
-                        // get caret position and processedText
-                        string processedText = PrepareInputTextForDisplay(false);
-                        string[] processedTextLines = processedText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                        Point caretPosition = CalculateCaretPositionForMultiline(processedText, _caret);
-
-                        // find current line
-                        Vector2 charSize = TextParagraph.GetCharacterActualSize();
-                        int currentLine = (int)(caretPosition.Y / charSize.Y);
-                        int charPositionInCurrentLine = (int)(caretPosition.X / charSize.X);
-
-                        // handle special key press (control character like space or delete)
-                        switch (currCharacterInput)
-                        {
-                            // go to the begining of the text
-                            case (char)SpecialChars.Home:
-                                if (UserInterface.Active.isControlDown) newCaretPos = 0;
-                                else newCaretPos -= charPositionInCurrentLine;
-                                break;
-                            // go to the end of the text
-                            case (char)SpecialChars.End:
-                                if (UserInterface.Active.isControlDown) newCaretPos = _value.Length;
-                                else
-                                {
-                                    int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
-                                    {
-                                        case Paragraph.LineType.WordWrap: charDelta--; break; // word wraped to next line
-                                        case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
-                                    }
-                                    newCaretPos += charDelta;
-                                }
-                                break;
-                            case (char)SpecialChars.ArrowUp:
-                                if (currentLine != 0)
-                                {
-                                    // go at begining of the line
-                                    newCaretPos -= charPositionInCurrentLine;
-
-                                    // go before newline character
-                                    newCaretPos--;
-
-                                    // get the number of character needed to be removed
-                                    int delta = processedTextLines[currentLine - 1].Length - charPositionInCurrentLine;
-                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine - 1])
-                                    {
-                                        case Paragraph.LineType.WordWrap: delta--; break; // word wraped to next line
-                                        case Paragraph.LineType.WordBroken: delta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
-                                    }
-
-                                    // if the line before has more characters than current carret index, correct carret position
-                                    if (delta > 0) newCaretPos -= delta;
-                                }
-                                break;
-                            case (char)SpecialChars.ArrowDown:
-                                if (currentLine != processedTextLines.Length - 1)
-                                {
-                                    // go at the end of the line
-                                    newCaretPos += processedTextLines[currentLine].Length - charPositionInCurrentLine;
-                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
-                                    {
-                                        case Paragraph.LineType.WordWrap: newCaretPos--; break; // word wraped to next line
-                                        case Paragraph.LineType.WordBroken: newCaretPos -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
-                                    }
-
-                                    // we go after the newline character
-                                    newCaretPos++;
-
-                                    // get number of actual char of the next line (remove word wrap and word break characters)
-                                    int numberOfActualCharInNextLine = processedTextLines[currentLine + 1].Length;
-                                    switch (TextParagraph.ProcessedTextLinesTypes[currentLine + 1])
-                                    {
-                                        case Paragraph.LineType.WordWrap: numberOfActualCharInNextLine--; break; // word wraped to next line
-                                        case Paragraph.LineType.WordBroken: numberOfActualCharInNextLine -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
-                                    }
-
-                                    // if the next line has less characters the the index of the caret,
-                                    // we put the caret at the end of the next line. Otherwise we calculate the position
-                                    if (numberOfActualCharInNextLine > charPositionInCurrentLine) newCaretPos += charPositionInCurrentLine;
-                                    else newCaretPos += numberOfActualCharInNextLine;
-                                }
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        // handle special key press (control character like home or arrow keys)
-                        switch (currCharacterInput)
-                        {
-                            case (char)SpecialChars.Home:
-                                // go at the begining of the current line
-                                newCaretPos = 0;
-                                break;
-                            case (char)SpecialChars.End:
-                                // go at the end of the current line
-                                newCaretPos = _value.Length;
-                                break;
-                        }
-                    }
-
-                    // handle special key press (control character like space or delete) and normal keys
-                    switch (currCharacterInput)
-                    {
-                        case (char)SpecialChars.Backspace:
-                            if (newCaretPos <= 0) break;
-                            newCaretPos--;
-                            if (newCaretPos < _value.Length && newCaretPos >= 0 && _value.Length > 0) _value = _value.Remove(newCaretPos, 1);
-                            break;
-                        case (char)SpecialChars.Delete:
-                            if (newCaretPos < _value.Length && _value.Length > 0) _value = _value.Remove(newCaretPos, 1);
-                            break;
-                        case (char)SpecialChars.ArrowLeft: if (--newCaretPos < 0) { newCaretPos = 0; } break;
-                        case (char)SpecialChars.ArrowRight: if (++newCaretPos > _value.Length) { newCaretPos = _value.Length; } break;
-                        case (char)SpecialChars.Space: _value = _value.Insert(newCaretPos++, " "); break;
-                    }
-
-                    // for normal character input, insert them in the text
-                    SpecialChars[] specialCharsEnum = Enum.GetValues(typeof(SpecialChars)).Cast<SpecialChars>().ToArray();
-                    char[] specialChars = Array.ConvertAll(specialCharsEnum, item => (char)item);
-                    if (!specialChars.Contains((char)currCharacterInput))
-                    {
-                        _value = _value.Insert(newCaretPos++, currCharacterInput.ToString());
-                    }
-
-                    // if carret move or text change, make it stay a little longer on screen before blinking again
-                    if (_caret != newCaretPos || _value != oldVal) PauseCaretBlink();
-
-                    // update caret position
-                    _caret = newCaretPos;
-
-                    // if value changed:
-                    if (_value != oldVal)
-                    {
-                        // if new characters were added and input is now illegal, revert to previous value
-                        if (!ValidateInput(ref _value, oldVal))
-                        {
-                            _value = oldVal;
-                            _caret = oldCaret;
-                        }
-
-                        // call change event
-                        if (_value != oldVal)
-                        {
-                            DoOnValueChange();
-                        }
-
-                        // fix caret position
-                        FixCaretPosition();
-                    }
-
-                    // when a key is pressed scroll to caret
-                    ScrollToCaret();
-                }
+                // for normal character input, insert them in the text
+                _value = _value.Insert(newCaretIndex++, currCharacterInput.ToString());
             }
+            else if (UserInterface.ControlKeys.Contains(currCharacterInputKey))
+            {
+                newCaretIndex = HandleControlInputKeys(newCaretIndex, currCharacterInputKey);
+            }
+
+            // if carret move or text change, make it stay a little longer on screen before blinking again
+            if (_caret != newCaretIndex || _value != oldVal) PauseCaretBlink();
+
+            // update caret position
+            _caret = newCaretIndex;
+
+            // if value changed:
+            if (_value != oldVal)
+            {
+                // if new characters were added and input is now illegal, revert to previous value
+                if (!ValidateInput(ref _value, oldVal))
+                {
+                    _value = oldVal;
+                    _caret = oldCaret;
+                }
+
+                // call change event
+                if (_value != oldVal)
+                {
+                    DoOnValueChange();
+                }
+
+                // fix caret position
+                FixCaretPosition();
+            }
+
+            // when a key is pressed scroll to caret
+            ScrollToCaret();
 
             // call base do-before-update
             base.DoBeforeUpdate();
+        }
+
+        int HandleControlInputKeys(int caretIndex, Keys pressedKey)
+        {
+            // here there is 3 switch for inputs keys
+            // 1 for multiline only, 1 for single line only and 1 for both
+            if (_multiLine)
+            {
+                // get caret position and processedText
+                string processedText = PrepareInputTextForDisplay(false);
+                string[] processedTextLines = processedText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                Point caretPosition = CalculateCaretPositionForMultiline(processedText, _caret);
+
+                // find current line
+                Vector2 charSize = TextParagraph.GetCharacterActualSize();
+                int currentLine = (int)(caretPosition.Y / charSize.Y);
+                int charPositionInCurrentLine = (int)(caretPosition.X / charSize.X);
+
+                // handle special key press (control character like space or delete)
+                switch (pressedKey)
+                {
+                    // go to the begining of the text
+                    case Keys.Home:
+                        if (UserInterface.Active.isControlDown) caretIndex = 0;
+                        else caretIndex -= charPositionInCurrentLine;
+                        break;
+                    // go to the end of the text
+                    case Keys.End:
+                        if (UserInterface.Active.isControlDown) caretIndex = _value.Length;
+                        else
+                        {
+                            int charDelta = processedTextLines[currentLine].Length - charPositionInCurrentLine;
+                            switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
+                            {
+                                case Paragraph.LineType.WordWrap: charDelta--; break; // word wraped to next line
+                                case Paragraph.LineType.WordBroken: charDelta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                            }
+                            caretIndex += charDelta;
+                        }
+                        break;
+                    case Keys.Up:
+                        if (currentLine != 0)
+                        {
+                            // go at begining of the line
+                            caretIndex -= charPositionInCurrentLine;
+
+                            // go before newline character
+                            caretIndex--;
+
+                            // get the number of character needed to be removed
+                            int delta = processedTextLines[currentLine - 1].Length - charPositionInCurrentLine;
+                            switch (TextParagraph.ProcessedTextLinesTypes[currentLine - 1])
+                            {
+                                case Paragraph.LineType.WordWrap: delta--; break; // word wraped to next line
+                                case Paragraph.LineType.WordBroken: delta -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                            }
+
+                            // if the line before has more characters than current carret index, correct carret position
+                            if (delta > 0) caretIndex -= delta;
+                        }
+                        break;
+                    case Keys.Down:
+                        if (currentLine != processedTextLines.Length - 1)
+                        {
+                            // go at the end of the line
+                            caretIndex += processedTextLines[currentLine].Length - charPositionInCurrentLine;
+                            switch (TextParagraph.ProcessedTextLinesTypes[currentLine])
+                            {
+                                case Paragraph.LineType.WordWrap: caretIndex--; break; // word wraped to next line
+                                case Paragraph.LineType.WordBroken: caretIndex -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                            }
+
+                            // we go after the newline character
+                            caretIndex++;
+
+                            // get number of actual char of the next line (remove word wrap and word break characters)
+                            int numberOfActualCharInNextLine = processedTextLines[currentLine + 1].Length;
+                            switch (TextParagraph.ProcessedTextLinesTypes[currentLine + 1])
+                            {
+                                case Paragraph.LineType.WordWrap: numberOfActualCharInNextLine--; break; // word wraped to next line
+                                case Paragraph.LineType.WordBroken: numberOfActualCharInNextLine -= (TextParagraph.AddHyphenWhenBreakWord ? 3 : 2); break; // word broken into pieces
+                            }
+
+                            // if the next line has less characters the the index of the caret,
+                            // we put the caret at the end of the next line. Otherwise we calculate the position
+                            if (numberOfActualCharInNextLine > charPositionInCurrentLine) caretIndex += charPositionInCurrentLine;
+                            else caretIndex += numberOfActualCharInNextLine;
+                        }
+                        break;
+                }
+            }
+            else
+            {
+                // handle special key press (control character like home or arrow keys)
+                switch (pressedKey)
+                {
+                    case Keys.Home:
+                        // go at the begining of the current line
+                        caretIndex = 0;
+                        break;
+                    case Keys.End:
+                        // go at the end of the current line
+                        caretIndex = _value.Length;
+                        break;
+                }
+            }
+
+            // handle special key press (control character like space or delete) and normal keys
+            switch (pressedKey)
+            {
+                case Keys.Back:
+                    if (caretIndex <= 0) break;
+                    caretIndex--;
+                    if (caretIndex < _value.Length && caretIndex >= 0 && _value.Length > 0) _value = _value.Remove(caretIndex, 1);
+                    break;
+                case Keys.Delete:
+                    if (caretIndex < _value.Length && _value.Length > 0) _value = _value.Remove(caretIndex, 1);
+                    break;
+                case Keys.Left: if (--caretIndex < 0) { caretIndex = 0; } break;
+                case Keys.Right: if (++caretIndex > _value.Length) { caretIndex = _value.Length; } break;
+                case Keys.Tab: case Keys.Space: _value = _value.Insert(caretIndex++, " "); break;
+                case Keys.Enter: _value = _value.Insert(caretIndex++, "\n"); break;
+            }
+
+            return caretIndex;
         }
 
         /// <summary>

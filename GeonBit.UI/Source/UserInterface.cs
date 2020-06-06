@@ -14,6 +14,7 @@ using GeonBit.UI.Entities;
 using Microsoft.Xna.Framework.Content;
 using System.Runtime.Serialization;
 using System.Xml.Serialization;
+using Microsoft.Xna.Framework.Input;
 
 
 namespace GeonBit.UI
@@ -118,11 +119,39 @@ namespace GeonBit.UI
         /// </summary>
         public IKeyboardInput KeyboardInputProvider;
 
-        /// <summary>Wheter or not a shift key is pressed (shift_left or shift_right).</summary>
+        /// <summary>Wheter or not a shift key is pressed (either left or right).</summary>
         public bool isShiftDown;
 
-        /// <summary>Wheter or not a control key is pressed (ctrl_left or ctrl_right).</summary>
+        /// <summary>Wheter or not a "Ctrl" key is pressed (either left or right).</summary>
         public bool isControlDown;
+
+        /// <summary>Wheter or not the "Alt Gr" key is pressed.</summary>
+        public bool isAltGrDown;
+
+        /// <summary>
+        /// List of handled control keys. Control keys are keys that don't add characters but do various thing
+        /// (delete a char, add a space, go to the first char, etc.).
+        /// </summary>
+        public static readonly Keys[] ControlKeys = new Keys[]
+        {
+            Keys.None,         // no character input
+            Keys.Delete,       // delete char
+            Keys.Back,         // backspace char
+            Keys.Space,        // space character input
+            Keys.Enter,        // carriage return character input
+            Keys.Left,         // arrow left - moving caret left
+            Keys.Right,        // arrow right - moving caret right
+            Keys.Up,           // arrow up - moving caret line up
+            Keys.Down,         // arrow down - moving caret line down
+            Keys.Home,         // home key - go to begining of text
+            Keys.End,          // end key - go to ending of text
+            Keys.Tab,          // in this implementation, adds a space
+            Keys.LeftShift,    // Toggle shift state
+            Keys.RightShift,   // Toggle shift state
+            Keys.LeftControl,  // Toggle control state
+            Keys.RightControl, // Toggle control state
+            Keys.RightAlt,     // Toggle alt gr state
+        };
 
         /// <summary>
         /// Get current game time value.
