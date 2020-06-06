@@ -9,6 +9,7 @@
 // Since: 2018.
 //-----------------------------------------------------------------------------
 #endregion
+using GeonBit.KeyboardLayouts;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
@@ -57,5 +58,11 @@ namespace GeonBit.UI
         /// </summary>
         /// <returns>The currently pressed key.</returns>
         Keys GetInputKey();
+       
+        /// <summary>
+        /// Set a new keyboard layout.
+        /// </summary>
+        /// <param name="keyboardLayout">The new keyboard layout.</param>
+        void SetKeyboardLayout(KeyboardLayout keyboardLayout);
     }
 }

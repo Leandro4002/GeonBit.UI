@@ -292,6 +292,15 @@ namespace GeonBit.UI
         public Keys GetInputKey() => _currInputKey;
 
         /// <summary>
+        /// Set a new keyboard layout.
+        /// </summary>
+        /// <param name="keyboardLayout">The new keyboard layout.</param>
+        public void SetKeyboardLayout(KeyboardLayout keyboardLayout)
+        {
+            this.keyboardLayout = keyboardLayout;
+        }
+
+        /// <summary>
         /// Get current mouse poisition.
         /// </summary>
         public Vector2 MousePosition
