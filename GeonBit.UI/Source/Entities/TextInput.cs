@@ -290,7 +290,28 @@ namespace GeonBit.UI.Entities
             {
                 value = value ?? string.Empty;
                 _value = _multiLine ? value : value.Replace("\n", string.Empty);
+                calculateScrollBarMaxValue();
                 FixCaretPosition();
+            }
+        }
+
+        void calculateScrollBarMaxValue()
+        {
+            if (!_multiLine) return;
+
+            // get actual processed string
+            _actualDisplayText = PrepareInputTextForDisplay(false);
+
+            // get how many lines can fit in the textbox and how many lines display text actually have
+            int linesFit = GetNumLinesFitInTheTextBox(TextParagraph);
+            int linesInText = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).Length;
+
+            // if there are more lines than can fit, show scrollbar and manage scrolling:
+            if (linesInText > linesFit) {
+                // set scrollbar max and steps
+                _scrollbar.Max = (uint)System.Math.Max(linesInText - linesFit, 2);
+                _scrollbar.StepsCount = _scrollbar.Max;
+                _scrollbar.Visible = true;
             }
         }
 
@@ -320,7 +341,7 @@ namespace GeonBit.UI.Entities
             else
             {
                 // get how many lines can fit in the textbox
-                int linesFit = _destRectInternal.Height / (int)(System.Math.Max(TextParagraph.GetCharacterActualSize().Y, 1));
+                int linesFit = GetNumLinesFitInTheTextBox(TextParagraph);
 
                 TextParagraph.Text = _value;
                 TextParagraph.CalcTextActualRectWithWrap();
@@ -615,19 +636,7 @@ namespace GeonBit.UI.Entities
                     if (linesInText > linesFit)
                     {
                         // fix paragraph width to leave room for the scrollbar
-                        float prevWidth = currParagraph.Size.X;
                         currParagraph.Size = new Vector2(_destRectInternal.Width / GlobalScale - 20, 0);
-                        if (currParagraph.Size.X != prevWidth)
-                        {
-                            // update size and re-calculate lines in text
-                            _actualDisplayText = PrepareInputTextForDisplay(showPlaceholder);
-                            linesInText = _actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).Length;
-                        }
-
-                        // set scrollbar max and steps
-                        _scrollbar.Max = (uint)System.Math.Max(linesInText - linesFit, 2);
-                        _scrollbar.StepsCount = _scrollbar.Max;
-                        _scrollbar.Visible = true;
 
                         // update text to fit scrollbar. first, rebuild the text with just the visible segment
                         List<string> lines = new List<string>(_actualDisplayText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None));
@@ -830,7 +839,8 @@ namespace GeonBit.UI.Entities
                 FixCaretPosition();
             }
 
-            // when a key is pressed scroll to caret
+            // when a key is pressed, recalculate scrollbas max value and scroll to caret
+            calculateScrollBarMaxValue();
             ScrollToCaret();
 
             // call base do-before-update
