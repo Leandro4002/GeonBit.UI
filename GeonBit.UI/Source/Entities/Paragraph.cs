@@ -259,6 +259,13 @@ namespace GeonBit.UI.Entities
         }
 
         /// <summary>
+        /// Test if a character is suported or not.
+        /// </summary>
+        /// <param name="charToTest">The char we want to test if it is supported.</param>
+        /// <returns>True or false if the char is supported.</returns>
+        public bool isCharacterSupported(char charToTest) => _currFont.Characters.Contains(charToTest);
+
+        /// <summary>
         /// Get how many characters can fit in a single line.
         /// </summary>
         public int MaxCharactersInLine

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Dynamic;
 using Microsoft.Xna.Framework.Input;
 
 // all keyboard layouts can be found here https://docs.microsoft.com/en-us/globalization/windows-keyboard-layouts
@@ -10,6 +9,45 @@ namespace GeonBit.KeyboardLayouts
     /// </summary>
     public abstract class KeyboardLayout
     {
+        /// <summary>
+        /// List of supported accents and their correspondant unicode "combine" character.
+        /// "Combine" characters are the same but they are meant to be used as dead keys.
+        /// Here is the list of unicode combining diacritical marks: http://www.fileformat.info/info/unicode/block/combining_diacritical_marks/list.htm
+        /// </summary>
+        static readonly Dictionary<char, char> supportedAccents = new Dictionary<char, char>
+        {
+            { '`', '\u0300' },
+            { '´', '\u0301' },
+            { '^', '\u0302' },
+            { '~', '\u0303' },
+            { '¨', '\u0308' },
+        };
+
+        /// <summary>
+        /// Get a letter without accent and a accent and combine them.
+        /// For example: a+^=â, e+`=è
+        /// </summary>
+        /// <param name="letterChar">The letter character.</param>
+        /// <param name="accentChar">The accent character.</param>
+        /// <returns>The combined char. If invalid char is provided, returns letterChar param</returns>
+        public static char CreateAccentChar(char letterChar, char accentChar)
+        {
+            // validate letter character
+            if (!((letterChar >= 'a' && letterChar <= 'z') || (letterChar >= 'A' && letterChar <= 'Z'))) return letterChar;
+
+            // validate accent character
+            if (!supportedAccents.ContainsKey(accentChar)) return letterChar;
+
+            // combine letter and accent
+            string combinedLetters = "" + letterChar + supportedAccents[accentChar];
+            combinedLetters = combinedLetters.Normalize(System.Text.NormalizationForm.FormC);
+
+            // returns the last char of the combined letters. If the combinaisons is possible (ex. "À"), it returns the right char,
+            // if the combinaision is not possible (ex. "Z`"), it returns the accent char.
+            return combinedLetters[0];
+        }
+
+
         /// <summary>
         /// Those "normal" keys are the most common (letters and numbers).
         /// (By "normal", we mean key pressed without "alt gr" or "shift" key).
@@ -64,5 +102,20 @@ namespace GeonBit.KeyboardLayouts
         /// "Alt Gr" key combinaisons.
         /// </summary>
         public abstract Dictionary<Keys, char> AltGrKeys { get; }
+
+        /// <summary>
+        /// "Normal" dead keys combinaisons (by "normal", we mean key pressed without "alt gr" or "shift" key).
+        /// </summary>S
+        public virtual Keys[] NormalDeadKeys { get; }
+
+        /// <summary>
+        /// "Shift" dead key combinaisons.
+        /// </summary>
+        public virtual Keys[] ShiftDeadKeys { get; }
+
+        /// <summary>
+        /// "Alt Gr" dead key combinaisons.
+        /// </summary>
+        public virtual Keys[] AltGrDeadKeys { get; }
     }
 }

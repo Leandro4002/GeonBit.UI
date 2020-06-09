@@ -27,6 +27,21 @@ namespace GeonBit.KeyboardLayouts
         /// </summary>
         public override Dictionary<Keys, char> AltGrKeys { get { return altGrKeys; } }
 
+        /// <summary>
+        /// "Normal" dead keys combinaisons (by "normal", we mean key pressed without "alt gr" or "shift" key).
+        /// </summary>S
+        public override Keys[] NormalDeadKeys { get { return normalDeadKeys; } }
+
+        /// <summary>
+        /// "Shift" dead key combinaisons.
+        /// </summary>
+        public override Keys[] ShiftDeadKeys { get { return shiftDeadKeys; } }
+
+        /// <summary>
+        /// "Alt Gr" dead key combinaisons.
+        /// </summary>
+        public override Keys[] AltGrDeadKeys { get { return altGrDeadKeys; } }
+
         // normal keys
         readonly Dictionary<Keys, char> normalKeys = new Dictionary<Keys, char>()
         {
@@ -94,6 +109,20 @@ namespace GeonBit.KeyboardLayouts
             { Keys.OemSemicolon,     '\u005b'},
             { Keys.OemPipe,          '\u007b'},
             { Keys.OemBackslash,     '\u005c'},
+        };
+
+        readonly Keys[] normalDeadKeys = new Keys[] {
+            Keys.OemCloseBrackets, // circumflex
+            Keys.OemTilde,         // diaresis
+        };
+
+        readonly Keys[] shiftDeadKeys = new Keys[] {
+            Keys.OemCloseBrackets, // grave accent
+        };
+
+        readonly Keys[] altGrDeadKeys = new Keys[] {
+            Keys.OemCloseBrackets, // tilde
+            Keys.OemOpenBrackets,  // acute accent
         };
     }
 }

@@ -42,8 +42,15 @@ namespace GeonBit.UI
         /// <summary>An artificial "lag" after a key is pressed when typing text input, to prevent mistake duplications.</summary>
         public float KeysTypeCooldown = 0.6f;
 
+        // store dead keys information. (modifier key that is typically used to attach a diacritic to a base letter)
+        char _oldDeadKeyChar;
+        char _currDeadKeyChar;
+
         // last character input key
         char _currCharacterInput = '\0';
+
+        // extra character to add after an input
+        char _extraCharacterInput = '\0';
 
         // last key that was pressed
         Keys _currInputKey = Keys.None;
@@ -60,7 +67,7 @@ namespace GeonBit.UI
         // current capslock state
         bool _capslock = false;
 
-        // the keyboard layout when non has been set
+        // the keyboard layout when none has been set
         Type defaultKeyboardLayout = typeof(US);
 
         /// <summary>
@@ -213,6 +220,9 @@ namespace GeonBit.UI
             _newKeyIsPressed = true;
             _isHoldingKey = true;
 
+            // store old dead key
+            _oldDeadKeyChar = _currDeadKeyChar;
+
             // set "shift", "alt gr" and "control" key state for current user interface
             bool isShiftDown = UserInterface.Active.isShiftDown = _newKeyboardState.IsKeyDown(Keys.LeftShift) || _newKeyboardState.IsKeyDown(Keys.RightShift);
             bool isControlDown = UserInterface.Active.isControlDown = _newKeyboardState.IsKeyDown(Keys.LeftControl) || _newKeyboardState.IsKeyDown(Keys.RightControl);
@@ -221,7 +231,23 @@ namespace GeonBit.UI
             // if the pressed key is a control key, set current char input to empty and return
             if (UserInterface.ControlKeys.Contains(_currInputKey))
             {
-                _currCharacterInput = '\0';
+                // special case with some chars
+                if (_currInputKey == Keys.Space || _currInputKey == Keys.Tab)
+                {
+                    _currCharacterInput = _currDeadKeyChar;
+                    _currDeadKeyChar = '\0';
+                }
+                else if (_currInputKey == Keys.Enter)
+                {
+                    _currCharacterInput = _currDeadKeyChar;
+                    _extraCharacterInput = '\n';
+                    _currDeadKeyChar = '\0';
+                }
+                else
+                {
+                    _currCharacterInput = '\0';
+                }
+                
                 return;
             }
 
@@ -243,25 +269,74 @@ namespace GeonBit.UI
                     _currCharacterInput = keyboardLayout.NormalKeys[key];
                 }
 
+                // if a dead key was pressed before, combine it with the letter
+                if (_currDeadKeyChar != '\0')
+                {
+                    char letterWithAccent = KeyboardLayout.CreateAccentChar(_currCharacterInput, _currDeadKeyChar);
+
+                    // if the letter cannot have this accent
+                    if (letterWithAccent == _currCharacterInput)
+                    {
+                        // output the accent and the letter (ex. `a)
+                        _extraCharacterInput = _currCharacterInput;
+                        _currCharacterInput = _currDeadKeyChar;
+                    }
+                    else
+                    {
+                        _currCharacterInput = letterWithAccent;
+                    }
+
+                    _currDeadKeyChar = '\0';
+                }
+
                 return;
             }
+
+            _currDeadKeyChar = '\0';
 
             // normal keys
             if (!isShiftDown && !isAltGrDown && keyboardLayout.NormalKeys.ContainsKey(key))
             {
-                _currCharacterInput = keyboardLayout.NormalKeys[key];
+                if (keyboardLayout.NormalDeadKeys != null && keyboardLayout.NormalDeadKeys.Contains(key))
+                {
+                    // set current input char to the last dead key. If there was one, it is gonna be outputed
+                    _currCharacterInput = _oldDeadKeyChar;
+                    _currDeadKeyChar = keyboardLayout.NormalKeys[key];
+                }
+                else
+                {
+                    _currCharacterInput = keyboardLayout.NormalKeys[key];
+                }
                 return;
             }
             // shift keys
             else if (isShiftDown && keyboardLayout.ShiftKeys.ContainsKey(key))
             {
-                _currCharacterInput = keyboardLayout.ShiftKeys[key];
+                if (keyboardLayout.ShiftDeadKeys != null && keyboardLayout.ShiftDeadKeys.Contains(key))
+                {
+                    // set current input char to the last dead key. If there was one, it is gonna be outputed
+                    _currCharacterInput = _oldDeadKeyChar;
+                    _currDeadKeyChar = keyboardLayout.ShiftKeys[key];
+                }
+                else
+                {
+                    _currCharacterInput = keyboardLayout.ShiftKeys[key];
+                }
                 return;
             }
             // alt gr keys
             else if (isAltGrDown && keyboardLayout.AltGrKeys.ContainsKey(key))
             {
-                _currCharacterInput = keyboardLayout.AltGrKeys[key];
+                if (keyboardLayout.AltGrDeadKeys != null && keyboardLayout.AltGrDeadKeys.Contains(key))
+                {
+                    // set current input char to the last dead key. If there was one, it is gonna be outputed
+                    _currCharacterInput = _oldDeadKeyChar;
+                    _currDeadKeyChar = keyboardLayout.AltGrKeys[key];
+                }
+                else
+                {
+                    _currCharacterInput = keyboardLayout.AltGrKeys[key];
+                }
                 return;
             }
 
@@ -276,6 +351,14 @@ namespace GeonBit.UI
         /// <returns>The char after text input applied on it. If the input is invalid, return null.</returns>
         public char? GetTextInput()
         {
+            // if there is an extra char to output, output it
+            if (_extraCharacterInput != '\0' && !_newKeyIsPressed)
+            {
+                _currCharacterInput = _extraCharacterInput;
+                _extraCharacterInput = '\0';
+                return _currCharacterInput;
+            }
+
             // if need to skip due to cooldown time
             if (!_newKeyIsPressed && _keyboardInputCooldown > 0f) return null;
 

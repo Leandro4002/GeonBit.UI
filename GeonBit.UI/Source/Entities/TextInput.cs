@@ -798,6 +798,11 @@ namespace GeonBit.UI.Entities
             // if input char is invalid, return
             if (currCharacterInput == null) return;
 
+            // if the input char is not supported, return
+            if (currCharacterInput != '\0' && !TextParagraph.isCharacterSupported((char)currCharacterInput)) {
+                return;
+            }
+
             // init some values to handle user input
             string oldVal = _value;
             int oldCaret = _caret;
