@@ -681,8 +681,7 @@ namespace GeonBit.UI.Entities
             if (IsCaretCurrentlyVisible && ((_multiLine && carretIsInVisibleArea) || !_multiLine))
             {
                 caretDstRect.X -= CARET_WIDTH / 2;
-                Texture2D blankTexture = DrawUtils.GetBlankWhiteTexture(spriteBatch.GraphicsDevice);
-                spriteBatch.Draw(blankTexture, caretDstRect, DrawUtils.rectangle_1x1, TextParagraph.FillColor);
+                spriteBatch.Draw(Resources.WhiteTexture, caretDstRect, DrawUtils.rectangle_1x1, TextParagraph.FillColor);
             }
         }
 

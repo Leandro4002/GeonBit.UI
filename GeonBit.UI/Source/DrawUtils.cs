@@ -20,24 +20,6 @@ namespace GeonBit.UI
         /// <summary>Small 1x1 rectangle. Used so we don't create a new rectangle every time we want a 1x1 rectangle.</summary>
         public static Rectangle rectangle_1x1 = new Rectangle(0, 0, 1, 1);
 
-        static Texture2D _blankTexture;
-
-        /// <summary>
-        /// Singleton to get a blank white texture of 1x1.
-        /// Used to draw rectangles.
-        /// </summary>
-        /// <param name="graphicsDevice">The graphicDevice instance used to create the texture.</param>
-        /// <returns>Instance of a blank texture.</returns>
-        public static Texture2D GetBlankWhiteTexture(GraphicsDevice graphicsDevice) {
-            if (_blankTexture == null) {
-                _blankTexture = new Texture2D(graphicsDevice, 1, 1);
-                Color[] data = new Color[1] { Color.White };
-                _blankTexture.SetData(data);
-            }
-
-            return _blankTexture;
-        }
-
         /// <summary>
         /// Trim the width and height of the texture to get the actual
         /// size of the texture without the empty space around.
